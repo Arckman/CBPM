@@ -27,7 +27,7 @@ public class ProcessMonitor {
 	private boolean needUpdate=false;
 	//namespace
 	private String nameSpace;
-	private String setupState=MonitorConstants.SETUPSTATE_NORMAL;
+	private String setupState=MonitorConstants.STATE_NORMAL;
 	private Analyser internalAnalyser;
 	private boolean isRoot=true;
 	private List<StaticEdge> incomeEdge=new ArrayList<StaticEdge>();
@@ -196,9 +196,6 @@ public class ProcessMonitor {
 	 * @param edge
 	 */
 	public void receiveScopeREQ(StaticEdge edge){
-		//suspend
-		if(!isSuspend())
-			setSuspend(true);
 		if(edge!=null){
 			if(!scope.contains(edge))
 				scope.add(edge);
@@ -246,12 +243,15 @@ public class ProcessMonitor {
 	 * @param edge
 	 */
 	public void receiveSetupREQ(StaticEdge edge){
+		//suspend
+		if(!isSuspend())
+			setSuspend(true);
 		if(edge!=null){
 			outgoEdgeConfirm.add(edge);
 		}
 		if(outgoEdgeConfirm.size()==scope.size()){//receive all setup request from scope
 			System.out.println(processName+" scope: "+scope.toString());
-			setupState=MonitorConstants.SETUPSTATE_ONDEMAND;
+			setupState=MonitorConstants.STATE_ONDEMAND;
 			System.out.println(processName+" set state: "+setupState);
 			for(StaticEdge e:incomeEdge){
 				incomeEdgeConfirm.add(e);
@@ -275,8 +275,8 @@ public class ProcessMonitor {
 	public void receiveSetupACK(StaticEdge edge){
 		if(edge!=null)
 			incomeEdgeConfirm.remove(edge);
-		if(incomeEdgeConfirm.size()==0&&setupState.equals(MonitorConstants.SETUPSTATE_SETUP)){//all process setup before done setup and itself setup done
-			setupState=MonitorConstants.SETUPSTATE_VALID;
+		if(incomeEdgeConfirm.size()==0&&setupState.equals(MonitorConstants.STATE_SETUP)){//all process setup before done setup and itself setup done
+			setupState=MonitorConstants.STATE_VALID;
 			System.out.println(processName+" set state: "+setupState);
 			Set<StaticEdge> remove=new HashSet<StaticEdge>();
 			for(StaticEdge e:outgoEdgeConfirm){
@@ -285,7 +285,7 @@ public class ProcessMonitor {
 			}
 			outgoEdgeConfirm.removeAll(remove);
 			resume();
-			if(scope.size()==0&&setupState.equals(MonitorConstants.SETUPSTATE_VALID)){//last process
+			if(scope.size()==0&&setupState.equals(MonitorConstants.STATE_VALID)){//last process
 				//do freeness to update
 				doUpdate();
 			}
@@ -615,8 +615,8 @@ public class ProcessMonitor {
 //	}
 	private void setupOver(){
 		if(notifyOutgoFutureDependencies.size()==0&&subNotifyOutgoFutureDependencies.size()==0&&
-				notifyOutgoPastDependencies.size()==0&&subNotifyOutgoPastDependencies.size()==0&&setupState==MonitorConstants.SETUPSTATE_ONDEMAND){
-			setupState=MonitorConstants.SETUPSTATE_SETUP;
+				notifyOutgoPastDependencies.size()==0&&subNotifyOutgoPastDependencies.size()==0&&setupState==MonitorConstants.STATE_ONDEMAND){
+			setupState=MonitorConstants.STATE_SETUP;
 			System.out.println(processName+" setup ends!");
 			if(incomeEdgeConfirm.size()==0)//two way to invoke last process setup ACK. 1.finish setup;2.receive all ACK.
 				//We don't know which event comes first
@@ -800,23 +800,37 @@ public class ProcessMonitor {
 	}
 	public synchronized void doUpdate(){
 		if(needUpdate){
-			if(vcManager.getStrategy().equals(MonitorConstants.STATRGY_CONCURRENT)){
+			if(vcManager.getStrategy().equals(MonitorConstants.STRATEGY_CONCURRENT)){
 				if(vcManager.checkDynamicUpdatable()){
 					System.out.println("Updating "+processName+" using cv strategy...");
 					vcManager.doUpdate();
 				}
-				if(checkFreeness()&&setupState.equals(MonitorConstants.SETUPSTATE_VALID)){
+				if(checkFreeness()&&setupState.equals(MonitorConstants.STATE_VALID)){
 					needUpdate=false;
 					receiveCleanupREQ();
 				}
-			}else if(vcManager.getStrategy().equals(MonitorConstants.STRATRGY_WAIT))
-				//check freeness
-				if(checkFreeness()&&setupState.equals(MonitorConstants.SETUPSTATE_VALID)){
-					System.out.println("Updating "+processName+" using wait strategy...");
-					vcManager.doUpdate();
-					needUpdate=false;
-					receiveCleanupREQ();
+			}else{
+				//check freeness//update using double check
+				if(checkFreeness()&&setupState.equals(MonitorConstants.STATE_VALID)){
+					if(vcManager.getStrategy().equals(MonitorConstants.STRATEGY_WAIT))
+						System.out.println("Updating "+processName+" using wait strategy...");
+					else if(vcManager.getStrategy().equals(MonitorConstants.STRATEGY_BLOCK))
+						System.out.println("Updating "+processName+" using block strategy...");
+					setupState=MonitorConstants.STATE_UPDATE;
+					if(checkFreeness()){
+						vcManager.doUpdate();
+						needUpdate=false;
+						receiveCleanupREQ();
+						this.notifyAll();
+					}
+					else{
+						System.out.println("Double check false, update cancelled!");
+						setupState=MonitorConstants.STATE_VALID;
+						if(vcManager.getStrategy().equals(MonitorConstants.STRATEGY_WAIT))
+							this.notifyAll();
+					}
 				}
+			}
 		}
 	}
 	
@@ -828,7 +842,7 @@ public class ProcessMonitor {
 	 * @return
 	 */
 	private boolean checkInfoUpdateNeeded(String rootMonitorName,long rootId){
-		if(!needUpdate||vcManager.getStrategy().equals(MonitorConstants.STRATRGY_WAIT))
+		if(!needUpdate||!vcManager.getStrategy().equals(MonitorConstants.STRATEGY_CONCURRENT))
 			return true;
 		return checkHasPast(rootMonitorName, rootId);
 	}
@@ -839,12 +853,10 @@ public class ProcessMonitor {
 	 * @return
 	 */
 	public boolean checkHasPast(String rootMonitorName,long rootId){
-		if(vcManager.getStrategy().equals(MonitorConstants.STATRGY_CONCURRENT)){
-			DynamicDependency dd=new DynamicDependency(null, null, rootMonitorName, rootId, null);
-			for(DynamicDependency past:IES){
-				if(past.getType().equals(MonitorConstants.DYNAMICDEPENDENCY_PAST)&&past.equalRootTX(dd))
-					return true;
-			}
+		DynamicDependency dd=new DynamicDependency(null, null, rootMonitorName, rootId, null);
+		for(DynamicDependency past:IES){
+			if(past.getType().equals(MonitorConstants.DYNAMICDEPENDENCY_PAST)&&past.equalRootTX(dd))
+				return true;
 		}
 		return false;
 	}
@@ -861,9 +873,9 @@ public class ProcessMonitor {
 	}
 	//====================clean up
 	public void receiveCleanupREQ(){
-		if(!setupState.equals(MonitorConstants.SETUPSTATE_NORMAL)){
+		if(!setupState.equals(MonitorConstants.STATE_NORMAL)){
 			System.out.println(processName+" clean up!");
-			setupState=MonitorConstants.SETUPSTATE_NORMAL;
+			setupState=MonitorConstants.STATE_NORMAL;
 			cleanup();
 			for(StaticEdge edge:incomeEdge){
 				sendCMD(processName,edge.getSource(),ComConstants.CLEANUP_REQUEST,null);

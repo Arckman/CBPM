@@ -226,7 +226,7 @@ public class StartListener implements MessageListener {
     	  im.setRootMonitorName(processDefinition.getName());
     	  im.setRootInstanceId(processInstance.getId());
       }
-      if(pm.getSetupState().equals(MonitorConstants.SETUPSTATE_ONDEMAND)||pm.getSetupState().equals(MonitorConstants.SETUPSTATE_SETUP)){
+      if(pm.getSetupState().equals(MonitorConstants.STATE_ONDEMAND)||pm.getSetupState().equals(MonitorConstants.STATE_SETUP)){
     	  //setting up,need suspend
     	  if(pm.isSuspend()){
     		  synchronized(im){
@@ -239,7 +239,7 @@ public class StartListener implements MessageListener {
     		  }
     	  }
       }
-      if(pm.getSetupState().equals(MonitorConstants.SETUPSTATE_VALID)){// valid state,create future path
+      if(pm.getSetupState().equals(MonitorConstants.STATE_VALID)){// valid state,create future path
     	  im.newTXInit();
       }
       

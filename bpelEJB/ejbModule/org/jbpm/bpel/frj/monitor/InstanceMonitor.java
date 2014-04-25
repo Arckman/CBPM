@@ -95,7 +95,7 @@ public class InstanceMonitor {
 	}
 	
 	public void newTXInit(){
-		if(!pm.getSetupState().equals(MonitorConstants.SETUPSTATE_NORMAL)){
+		if(!pm.getSetupState().equals(MonitorConstants.STATE_NORMAL)){
 			if(pm.isRoot())
 				pm.rootTXInit(this);
 			else
@@ -104,7 +104,7 @@ public class InstanceMonitor {
 	}
 	public void TXEnd(){
 //		pm.removeInstanceMonitor(instanceId);
-		if(!pm.getSetupState().equals(MonitorConstants.SETUPSTATE_NORMAL)){
+		if(!pm.getSetupState().equals(MonitorConstants.STATE_NORMAL)){
 			if(pm.isRoot())
 				pm.rootTXEnd(this);
 			else
@@ -114,7 +114,7 @@ public class InstanceMonitor {
 	public void updateCurrentNode(String nodeName){
 		lastNode=currentNode;
 		currentNode=nodeName;
-		if(pm.getSetupState().equals(MonitorConstants.SETUPSTATE_VALID))
+		if(pm.getSetupState().equals(MonitorConstants.STATE_VALID))
 			pm.updateCurrentNode(this);
 	}
 }

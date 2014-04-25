@@ -91,7 +91,7 @@ public class IntegrationConfigurator implements ServletContextListener {
         .getAttribute(SoapHandler.INTEGRATION_CONTROL_ATTR);
     // ensure integration control is bound to servlet context, as initialization may have failed
     if (integrationControl != null) {
-    	if(JbpmConfiguration.getVersionControlManager().getStrategy().equals(MonitorConstants.STRATRGY_WAIT))
+    	if(JbpmConfiguration.getVersionControlManager().getStrategy().equals(MonitorConstants.STRATEGY_WAIT))
       try {
         integrationControl.disableInboundMessageActivities();
         log.info("message reception disabled for process: "

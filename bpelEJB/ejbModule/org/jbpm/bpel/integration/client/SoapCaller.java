@@ -185,16 +185,53 @@ public class SoapCaller implements Caller {
     VersionControlManager vm=JbpmConfiguration.getVersionControlManager();
     ProcessMonitor target=vm.getPMFromURL(address);
     if(target.isNeedUpdate()){//target need update
-    	//TODO if need suspend during target updating, add here
+    	//TODO if need suspend during target updating, add here! This thread should not wait on target object, because of distribution.
+    	if(target.getSetupState().equals(MonitorConstants.STATE_UPDATE)){
+    		synchronized(target){
+	    		try {
+					target.wait();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+    		}
+    		//TODO if updated,resume should wait for finishing of updating for target
+			try {
+				Thread.currentThread().sleep(5000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+    	}
     	//consider strategy
-    	if(vm.getStrategy().equals(MonitorConstants.STRATRGY_WAIT)){
+    	if(vm.getStrategy().equals(MonitorConstants.STRATEGY_WAIT)){
     			
-    	}else if(vm.getStrategy().equals(MonitorConstants.STATRGY_CONCURRENT)){
+    	}else if(vm.getStrategy().equals(MonitorConstants.STRATEGY_CONCURRENT)){
     		address=target.getNewURL();
     		if(target.checkHasPast(rootMonitorName, rootId)){//has past use
     			address=target.getOldURL();
     		}
     		System.out.println("Calling "+address.toString());
+    	}
+    	else if(vm.getStrategy().equals(MonitorConstants.STRATEGY_BLOCK)){
+    		if(target.getSetupState().equals(MonitorConstants.STATE_VALID))
+    		if(!target.checkHasPast(rootMonitorName, rootId)){//has no past use
+    			synchronized(target){
+	    			try {
+						target.wait();
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+    			}
+    			//TODO if updated,resume should wait for finishing of updating for target
+				try {
+					Thread.currentThread().sleep(5000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+    		}
     	}
     }
     return soapConnection.call(soapInput, address);
