@@ -62,7 +62,7 @@ public class CFGGraph extends Graph{
 		return map;
 	}
 	public void addNode(Node node){
-		this.map.put(node.getName(), node);
+		this.map.put(node.getActivityName(), node);
 	}
 	
 	public Node getStart() {

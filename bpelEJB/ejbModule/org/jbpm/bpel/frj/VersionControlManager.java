@@ -22,9 +22,9 @@ public class VersionControlManager {
 
 	private boolean needUpdate=false;//indicate need for update
 	private Map<String,ProcessMonitor> monitors=new HashMap<String,ProcessMonitor>();
-//	private String strategy=MonitorConstants.STRATEGY_CONCURRENT;
+	private String strategy=MonitorConstants.STRATEGY_CONCURRENT;
 //	private String strategy=MonitorConstants.STRATEGY_WAIT;
-	private String strategy=MonitorConstants.STRATEGY_BLOCK;
+//	private String strategy=MonitorConstants.STRATEGY_BLOCK;
 	private Map<URL,ProcessMonitor> urlMapPM=new HashMap<URL,ProcessMonitor>();
 	
 	public boolean checkProcessDeployed(String processName){
@@ -91,7 +91,7 @@ public class VersionControlManager {
 		else if(cmd.equals(ComConstants.PAST_ACK))
 			pm.receivePastACK((DynamicDependency)c.getMsg());
 		else if(cmd.equals(ComConstants.SUB_FUTURE_NOTIFY))
-			pm.receiveSubFutureREQ((DynamicDependency)c.getMsg());
+			pm.receiveSubFutureNotify((DynamicDependency)c.getMsg());
 		else if(cmd.equals(ComConstants.SUB_FUTURE_ACK))
 			pm.receiveSubFutureACK((DynamicDependency)c.getMsg());
 		else if(cmd.equals(ComConstants.SUB_PAST_NOTIFY))

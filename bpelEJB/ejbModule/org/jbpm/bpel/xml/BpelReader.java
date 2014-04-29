@@ -203,6 +203,7 @@ public class BpelReader {
       // read process definition
       read(processDefinition, document.getDocumentElement(), wsdlLocator);
       ///for analyser==============================================================================================
+      //TODO if update service for many time, internal analysis should be created each time when a service deploy.
       if(!JbpmConfiguration.getVersionControlManager().checkProcessDeployed(processDefinition.getName())){
 	      Analyser an=new Analyser();
 	      an.doModeling(document);

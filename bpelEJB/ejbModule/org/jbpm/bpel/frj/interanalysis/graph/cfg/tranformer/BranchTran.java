@@ -75,11 +75,12 @@ public class BranchTran extends Transformer {
 			b.setTruePath(b.getNext().get(0));
 			b.setFalsePath(b.getNext().get(1));
 		}else{
-			prior.addNextNode(next);
-			next.addPriorNode(prior);
+//			prior.addNextNode(next);
+//			next.addPriorNode(prior);
+			this.getBuildCFG().transformActivity((Activity)subActivities.get(subActivitiesNum-1), prior, next);
 			BranchBeginNode b=(BranchBeginNode)prior;
 			b.setTruePath(b.getNext().get(0));
-			b.setFalsePath(next);
+			b.setFalsePath(b.getNext().get(1));
 		}
 		return lastNode;
 	}

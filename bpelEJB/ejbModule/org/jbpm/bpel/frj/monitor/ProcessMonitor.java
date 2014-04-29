@@ -189,7 +189,26 @@ public class ProcessMonitor {
 		c.setMsg(o);
 		vcManager.send(c);
 	}
-	
+	/**
+	 * Send message for a collection. It should be the right way to solve asynchronized problems.
+	 * For each Object in Collection, new a thread for sending.
+	 * This function must be synchronized on the Collection by developer.
+	 * @param cmd
+	 * @param c
+	 */
+	private void sendCollectionCMD(final String cmd,Collection c){
+		for(Object o:c){
+			final Object msg=o;
+			Thread t=new Thread(){
+				public void run(){
+					String source=null;//source=msg.source
+					String target=null;//target=msg.target
+					sendCMD(source,target,cmd,msg);
+				}
+			};
+			t.start();
+		}
+	}
 	//======================on-demand functions
 	/**
 	 * get compute scope request
@@ -339,14 +358,20 @@ public class ProcessMonitor {
 						}
 					}
 				}
-				for(DynamicDependency dd:notifyOutgoFutureDependencies){
+				//TODO Clone set is not a good idea for solving asynchronized error, should call @link{sendCollectionCMD} function
+				Set<DynamicDependency> set;
+				set=new HashSet<DynamicDependency>(notifyOutgoFutureDependencies);
+				for(DynamicDependency dd:set){
 					sendCMD(dd.getSourceMonitorName(), dd.getTargetMonitorName(), ComConstants.FUTURE_NOTIFY, dd.clone());
 				}
-				for(DynamicDependency dd:notifyOutgoPastDependencies)
+				set=new HashSet<DynamicDependency>(notifyOutgoPastDependencies);
+				for(DynamicDependency dd:set)
 					sendCMD(dd.getSourceMonitorName(), dd.getTargetMonitorName(), ComConstants.PAST_NOTIFY, dd.clone());
-				for(DynamicDependency dd:subNotifyOutgoFutureDependencies)
+				set=new HashSet<DynamicDependency>(subNotifyOutgoFutureDependencies);
+				for(DynamicDependency dd:set)
 					sendCMD(dd.getSourceMonitorName(), dd.getTargetMonitorName(), ComConstants.SUB_FUTURE_NOTIFY, dd.clone());
-				for(DynamicDependency dd:subNotifyOutgoPastDependencies)
+				set=new HashSet<DynamicDependency>(subNotifyOutgoPastDependencies);
+				for(DynamicDependency dd:set)
 					sendCMD(dd.getSourceMonitorName(), dd.getTargetMonitorName(), ComConstants.SUB_PAST_NOTIFY, dd.clone());
 			}
 		}
@@ -456,7 +481,7 @@ public class ProcessMonitor {
 			setupOver();
 	}
 	
-	public void receiveSubFutureREQ(DynamicDependency dd){
+	public void receiveSubFutureNotify(DynamicDependency dd){
 		if(dd!=null){
 			if(!subNotifyIncomeFutureDependencies.contains(dd)){
 				subNotifyIncomeFutureDependencies.add(dd);
@@ -552,9 +577,9 @@ public class ProcessMonitor {
 					}
 					for(DynamicDependency dynamicDependency:subNotifyOutgoPastDependencies)
 						if(dynamicDependency.getType().equals(MonitorConstants.DYNAMICDEPENDENCY_PAST))
-							sendCMD(processName,dynamicDependency.getTargetMonitorName(),ComConstants.FUTURE_NOTIFY,dynamicDependency.clone());
+							sendCMD(processName,dynamicDependency.getTargetMonitorName(),ComConstants.PAST_NOTIFY,dynamicDependency.clone());
 						else if(dynamicDependency.getType()==null)
-							sendCMD(processName, dynamicDependency.getTargetMonitorName(), ComConstants.SUB_FUTURE_NOTIFY,dynamicDependency.clone());
+							sendCMD(processName, dynamicDependency.getTargetMonitorName(), ComConstants.SUB_PAST_NOTIFY,dynamicDependency.clone());
 				}
 				receiveSubPastACK(null);
 			}
@@ -622,10 +647,6 @@ public class ProcessMonitor {
 				//We don't know which event comes first
 				receiveSetupACK(null);
 		}
-	}
-	
-	public void blockInstances(){
-		
 	}
 	
 	//=========================on-going management functions
@@ -769,7 +790,6 @@ public class ProcessMonitor {
 				removeFuture(dd);
 				//past create may lead to freeness
 				if(needUpdate){
-					System.out.println(IES);
 					doUpdate();
 				}
 			}
@@ -861,6 +881,7 @@ public class ProcessMonitor {
 		return false;
 	}
 	private boolean checkFreeness(){
+		System.out.println(IES);
 		for(int i=0;i<IES.size();i++){
 			DynamicDependency p=IES.get(i);
 			for(int j=i+1;j<IES.size();j++){
