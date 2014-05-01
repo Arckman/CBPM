@@ -84,9 +84,6 @@ import org.jbpm.jpdl.par.ProcessArchive;
 /* 110 */     ProcessDefinition processDefinition = readProcessDefinition(fileItem.getInputStream(), fileName);
 //============================================insert work this period================================================
 			VersionControlManager vm=JbpmConfiguration.getVersionControlManager();
-			String url="http://127.0.0.1:8080/";
-			url+=fileName.split("\\.")[0]+"/";url+=processDefinition.getName()+"Provider";
-			vm.addURL(processDefinition, url);
 			if(vm.checkDynamicUpdatable()){
 				//version consistent dynamic update
 				vm.dynamicUpdate(processDefinition, fileName);
@@ -101,6 +98,9 @@ import org.jbpm.jpdl.par.ProcessArchive;
 				}
 			}
 				deployProcessDefinition(processDefinition, fileName);
+				String url="http://127.0.0.1:8080/";
+				url+=fileName.split("\\.")[0]+"/";url+=processDefinition.getName()+"Provider";
+				vm.addURL(processDefinition, url);
 /*     */ 
 /* 113 */     response.sendRedirect("processes.jsp");
 /*     */   }

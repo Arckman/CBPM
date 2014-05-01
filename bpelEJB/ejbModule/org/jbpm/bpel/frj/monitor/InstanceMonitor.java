@@ -104,6 +104,8 @@ public class InstanceMonitor {
 	}
 	public void TXEnd(){
 //		pm.removeInstanceMonitor(instanceId);
+//		System.out.println("recievie TXEND");
+//		System.out.println(toString());
 		if(!pm.getSetupState().equals(MonitorConstants.STATE_NORMAL)){
 			if(pm.isRoot())
 				pm.rootTXEnd(this);
@@ -116,5 +118,17 @@ public class InstanceMonitor {
 		currentNode=nodeName;
 		if(pm.getSetupState().equals(MonitorConstants.STATE_VALID))
 			pm.updateCurrentNode(this);
+	}
+	@Override
+	public String toString(){
+		StringBuffer s=new StringBuffer();
+		s.append("Instance: "+pm.getProcessName()+"#"+instanceId+"-----------------------------------\t\n");
+		s.append("RootMonitorName: "+rootMonitorName+"\t\n");
+		s.append("RootId: "+rootInstanceId+"\t\n");
+		s.append("ParentMonitorName: "+parentMonitorName+"\t\n");
+		s.append("ParentId: "+parentInstanceId+"\t\n");
+		s.append("LastNode: "+lastNode+" $$ CurrentNode: "+currentNode+"\t\n");
+		s.append("/////////////////////////////end///////////////////////////////////////////////////////");
+		return s.toString();
 	}
 }

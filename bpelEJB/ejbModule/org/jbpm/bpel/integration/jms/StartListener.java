@@ -226,6 +226,7 @@ public class StartListener implements MessageListener {
     	  im.setRootMonitorName(processDefinition.getName());
     	  im.setRootInstanceId(processInstance.getId());
       }
+//      System.out.println(im.toString());
       if(pm.getSetupState().equals(MonitorConstants.STATE_ONDEMAND)||pm.getSetupState().equals(MonitorConstants.STATE_SETUP)){
     	  //setting up,need suspend
     	  if(pm.isSuspend()){

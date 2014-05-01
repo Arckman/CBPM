@@ -149,34 +149,38 @@ public class SoapCaller implements Caller {
   private SOAPMessage callImpl(String operation, Map inputParts) throws SOAPException {
     // create message
     SOAPMessage soapInput = messageFactory.createMessage();
-
+    String rootMonitorName = null;
+    rootMonitorName=(String)inputParts.get("rootMonitorName");
+    inputParts.remove("rootMonitorName");
+    long rootId = 0;
+    rootId=(Long) inputParts.get("rootId");
+    inputParts.remove("rootId");
+    String parentMonitorName=null;
+    parentMonitorName=(String)inputParts.get("parentMonitorName");
+    inputParts.remove("parentMonitorName");
+    long parentId =0;
+    parentId=(Long) inputParts.get("parentId");
+    inputParts.remove("parentId");
+    
     // write message
     formatter.writeMessage(operation, soapInput, inputParts, MessageDirection.INPUT);
     //===========================add root and parent information into soap call input=========================
     SOAPPart soapPart=soapInput.getSOAPPart();
     SOAPEnvelope envelop=soapPart.getEnvelope();
     SOAPBody body=envelop.getBody();
-    String rootMonitorName = null;
-	long rootId = 0;
-    if(inputParts.get("rootMonitorName")!=null){
+    if(rootMonitorName!=null){
 	    Name soapName=envelop.createName("rootMonitorName");
 	    SOAPBodyElement bodyElement=body.addBodyElement(soapName);
-	    rootMonitorName=(String)inputParts.get("rootMonitorName");
 	    bodyElement.addTextNode(rootMonitorName);
-	    inputParts.remove("rootMonitorName");
 	    soapName=envelop.createName("rootId");
 	    bodyElement=body.addBodyElement(soapName);
-	    rootId=(Long) inputParts.get("rootId");
 	    bodyElement.addTextNode((String.valueOf(rootId)));
-	    inputParts.remove("rootId");
 	    soapName=envelop.createName("parentMonitorName");
 	    bodyElement=body.addBodyElement(soapName);
-	    bodyElement.addTextNode((String)inputParts.get("parentMonitorName"));
-	    inputParts.remove("parentMonitorName");
+	    bodyElement.addTextNode(parentMonitorName);
 	    soapName=envelop.createName("parentId");
 	    bodyElement=body.addBodyElement(soapName);
-	    bodyElement.addTextNode((String.valueOf(inputParts.get("parentId"))));
-	    inputParts.remove("parentId");
+	    bodyElement.addTextNode((String.valueOf(parentId)));
     }
 
     // call endpoint
@@ -184,7 +188,9 @@ public class SoapCaller implements Caller {
     //======================before call, try to configure address========================
     VersionControlManager vm=JbpmConfiguration.getVersionControlManager();
     ProcessMonitor target=vm.getPMFromURL(address);
-    if(target.isNeedUpdate()){//target need update
+    if(vm.getStrategy().equals(MonitorConstants.STRATEGY_CONCURRENT))
+    	address=target.getNewURL();
+    if(target!=null&&target.isNeedUpdate()){//target need update
     	//TODO if need suspend during target updating, add here! This thread should not wait on target object, because of distribution.
     	if(target.getSetupState().equals(MonitorConstants.STATE_UPDATE)){
     		synchronized(target){
@@ -207,7 +213,6 @@ public class SoapCaller implements Caller {
     	if(vm.getStrategy().equals(MonitorConstants.STRATEGY_WAIT)){
     			
     	}else if(vm.getStrategy().equals(MonitorConstants.STRATEGY_CONCURRENT)){
-    		address=target.getNewURL();
     		if(target.checkHasPast(rootMonitorName, rootId)){//has past use
     			address=target.getOldURL();
     		}
