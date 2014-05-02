@@ -730,7 +730,8 @@ public class ProcessMonitor {
 	private synchronized void removeFuture(DynamicDependency dd){
 		if(checkInfoUpdateNeeded(dd.getRootMonitorName(), dd.getRootInstanceId())){
 			List<DynamicDependency> remove=new ArrayList<DynamicDependency>();
-			for(DynamicDependency outgo:OES){
+			List<DynamicDependency> clone=new ArrayList<DynamicDependency>(OES);//TODO multi-thread will not has synchronous and concurrent problems
+			for(DynamicDependency outgo:clone){
 				if(!outgo.getTargetMonitorName().equals(processName)&&outgo.equalRootTX(dd)&&outgo.getType().equals(MonitorConstants.DYNAMICDEPENDENCY_FUTURE)){
 					boolean futureIncome=false;
 					for(DynamicDependency income:IES){
@@ -925,7 +926,7 @@ public class ProcessMonitor {
 			}
 		}
 	}
-	private void cleanup(){
+	private synchronized void cleanup(){
 		scope.clear();
 		confirmSetClear();
 		IES.clear();OES.clear();

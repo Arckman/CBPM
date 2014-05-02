@@ -213,6 +213,7 @@ public class SoapCaller implements Caller {
     	if(vm.getStrategy().equals(MonitorConstants.STRATEGY_WAIT)){
     			
     	}else if(vm.getStrategy().equals(MonitorConstants.STRATEGY_CONCURRENT)){
+    		address=target.getNewURL();
     		if(target.checkHasPast(rootMonitorName, rootId)){//has past use
     			address=target.getOldURL();
     		}

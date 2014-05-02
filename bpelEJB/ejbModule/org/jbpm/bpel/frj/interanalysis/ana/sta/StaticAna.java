@@ -72,12 +72,13 @@ public class StaticAna {
 	private List analyse(Node node){
 		List fL=new ArrayList();
 		if(!node.getNodeType().equals("$ProcessEndNode")){
-			this.analysedNodes.add(node);
+//			this.analysedNodes.add(node);
 			List next=node.getNext();
 			Iterator i=next.iterator();
 			while(i.hasNext()){
 				Node nextNode=(Node)i.next();
 				if(!this.analysedNodes.contains(nextNode)){
+					analysedNodes.add(nextNode);
 				List nextFL=analyse(nextNode);
 				//node.fl+next
 //				if(this.nodeMaps.containsValue(nextNode))

@@ -122,6 +122,7 @@ public class InstanceMonitor {
 		lastNode=currentNode;
 		currentNode=nodeName;
 		pastNodes.add(lastNode);
+//		System.out.println(instanceId+" Updated Node======last: "+lastNode+" $$ current: "+currentNode+"==========");
 		if(pm.getSetupState().equals(MonitorConstants.STATE_VALID))
 			pm.updateCurrentNode(this);
 	}

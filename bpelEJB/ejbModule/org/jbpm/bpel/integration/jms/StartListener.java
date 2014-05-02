@@ -227,19 +227,19 @@ public class StartListener implements MessageListener {
     	  im.setRootInstanceId(processInstance.getId());
       }
 //      System.out.println(im.toString());
-      if(pm.getSetupState().equals(MonitorConstants.STATE_ONDEMAND)||pm.getSetupState().equals(MonitorConstants.STATE_SETUP)){
-    	  //setting up,need suspend
-    	  if(pm.isSuspend()){
-    		  synchronized(im){
-    			  try {
-					im.wait();
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-    		  }
-    	  }
-      }
+//      if(pm.getSetupState().equals(MonitorConstants.STATE_ONDEMAND)||pm.getSetupState().equals(MonitorConstants.STATE_SETUP)){
+//    	  //setting up,need suspend
+//    	  if(pm.isSuspend()){
+//    		  synchronized(im){
+//    			  try {
+//					im.wait();
+//				} catch (InterruptedException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+//				}
+//    		  }
+//    	  }
+//      }
       if(pm.getSetupState().equals(MonitorConstants.STATE_VALID)){// valid state,create future path
     	  im.newTXInit();
       }

@@ -10,6 +10,7 @@ import java.util.Map;
 import org.jbpm.bpel.frj.interanalysis.modeling.model.Activity;
 import org.jbpm.bpel.frj.interanalysis.modeling.model.composite.scope.Scope;
 import org.jbpm.bpel.frj.interanalysis.modeling.model.composite.structure.If;
+import org.jbpm.bpel.frj.interanalysis.modeling.model.composite.structure.While;
 
 
 
@@ -82,7 +83,7 @@ public class BpelModel {
 		Activity activity=nodes.get(nodeName);
 		if(activity==null)
 			return false;
-		if(activity instanceof If)
+		if(activity instanceof If||activity instanceof While)
 			return true;
 		else return false;
 	}
