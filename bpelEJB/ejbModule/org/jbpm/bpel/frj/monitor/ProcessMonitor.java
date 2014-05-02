@@ -345,7 +345,7 @@ public class ProcessMonitor {
 						}
 					}
 					//p(T)
-					if(internalAnalyser.isPast(currentNodeName, partnerLinkType)){
+					if(im.isPast(currentNodeName, partnerLinkType,internalAnalyser)){
 						DynamicDependency dynamicDependency=new DynamicDependency(processName,edge.getTarget(),processName,im.getInstanceId(),
 								MonitorConstants.DYNAMICDEPENDENCY_PAST);
 						if(!OES.contains(dynamicDependency)){
@@ -362,7 +362,7 @@ public class ProcessMonitor {
 							subNotifyOutgoFutureDependencies.add(dynamicDependency);
 //							sendCMD(processName, edge.getTarget(), ComConstants.SUB_FUTURE_NOTIFY,dynamicDependency);
 						}
-						if(!internalAnalyser.isPast(currentNodeName, partnerLinkType)){
+						if(!im.isPast(currentNodeName, partnerLinkType,internalAnalyser)){
 							DynamicDependency dynamicDependency=new DynamicDependency(processName,edge.getTarget(),processName,im.getInstanceId(),
 									null);
 							subNotifyOutgoPastDependencies.add(dynamicDependency);
@@ -577,7 +577,7 @@ public class ProcessMonitor {
 					for(StaticEdge outEdge:outgoEdge){
 						String currentNodeName=im.getCurrentNode();
 						String partnerLinkType=edgeMapPartnerLinkType.get(outEdge);
-						if(internalAnalyser.isPast(currentNodeName, partnerLinkType)){
+						if(im.isPast(currentNodeName, partnerLinkType,internalAnalyser)){
 							DynamicDependency dynamicDependency=new DynamicDependency(processName,outEdge.getTarget(),dd.getRootMonitorName(),dd.getRootInstanceId(),
 									MonitorConstants.DYNAMICDEPENDENCY_PAST);
 							if(!OES.contains(dynamicDependency)){
@@ -587,7 +587,7 @@ public class ProcessMonitor {
 							}
 						}
 						if(internalAnalyser.isS(currentNodeName, partnerLinkType)){
-							if(!internalAnalyser.isPast(currentNodeName, partnerLinkType)){
+							if(!im.isPast(currentNodeName, partnerLinkType,internalAnalyser)){
 								DynamicDependency dynamicDependency=new DynamicDependency(processName,outEdge.getTarget(),dd.getRootMonitorName(),dd.getRootInstanceId(),
 										null);
 								subNotifyOutgoPastDependencies.add(dynamicDependency);

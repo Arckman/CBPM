@@ -25,7 +25,7 @@ import org.jbpm.bpel.frj.interanalysis.graph.cfg.node.ReplyNode;
  */
 public class BPELReaRecord {
 	private CFGGraph bpelGraph;
-	private Map<Node,List<Node>> pastNodes=new HashMap<Node,List<Node>>();
+//	private Map<Node,List<Node>> pastNodes=new HashMap<Node,List<Node>>();
 	private Map<Node,List> reachability=null;
 //	private Map<Node,List> dynamicReach=null;
 	public BPELReaRecord(CFGGraph graph){
@@ -37,12 +37,12 @@ public class BPELReaRecord {
 	public void setBpelGraph(CFGGraph bpelGraph) {
 		this.bpelGraph = bpelGraph;
 	}
-	public Map<Node,List<Node>>getPastNodes(){
-		return pastNodes;
-	}
-	public void addPastNodes(Node node,List<Node>list){
-		pastNodes.put(node, list);
-	}
+//	public Map<Node,List<Node>>getPastNodes(){
+//		return pastNodes;
+//	}
+//	public void addPastNodes(Node node,List<Node>list){
+//		pastNodes.put(node, list);
+//	}
 	public Map<Node, List> getReachability() {
 		return reachability;
 	}
@@ -59,16 +59,16 @@ public class BPELReaRecord {
 	 * filter past and future set, containing only interacting activity( receive, reply, invoke)
 	 */
 	public void filter(){
-		if(pastNodes!=null){
-			for(List<Node> list:pastNodes.values()){
-				List<Node> removeList=new ArrayList<Node>();
-				for(Node node:list){
-					if(!((node instanceof ReceiveNode)||(node instanceof ReplyNode)||(node instanceof InvokeNode)))
-						removeList.add(node);
-				}
-				list.removeAll(removeList);
-			}
-		}
+//		if(pastNodes!=null){
+//			for(List<Node> list:pastNodes.values()){
+//				List<Node> removeList=new ArrayList<Node>();
+//				for(Node node:list){
+//					if(!((node instanceof ReceiveNode)||(node instanceof ReplyNode)||(node instanceof InvokeNode)))
+//						removeList.add(node);
+//				}
+//				list.removeAll(removeList);
+//			}
+//		}
 		if(reachability!=null){
 			for(List<Node> list:reachability.values()){
 				List<Node> removeList=new ArrayList<Node>();
@@ -92,17 +92,17 @@ public class BPELReaRecord {
 		}
 		return false;
 	}
-	public boolean isPast(Node sourceNode,String targetNodeName){
-		if(pastNodes==null)
-			return false;
-		if(sourceNode==null)return false;//null means first node(receive)
-		List<Node> pastList=pastNodes.get(sourceNode);
-		for(Node node:pastList){
-			if(node.equals(targetNodeName))
-				return true;
-		}
-		return false;
-	}
+//	public boolean isPast(Node sourceNode,String targetNodeName){
+//		if(pastNodes==null)
+//			return false;
+//		if(sourceNode==null)return false;//null means first node(receive)
+//		List<Node> pastList=pastNodes.get(sourceNode);
+//		for(Node node:pastList){
+//			if(node.equals(targetNodeName))
+//				return true;
+//		}
+//		return false;
+//	}
 	
 	public void printReaRecord(String activityName){
 		Iterator k=this.reachability.keySet().iterator();

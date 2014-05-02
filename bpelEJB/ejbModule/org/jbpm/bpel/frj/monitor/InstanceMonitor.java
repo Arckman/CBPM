@@ -1,5 +1,9 @@
 package org.jbpm.bpel.frj.monitor;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import org.jbpm.bpel.frj.interanalysis.mgr.Analyser;
 import org.jbpm.bpel.frj.util.MonitorConstants;
 import org.jbpm.graph.exe.ProcessInstance;
 import org.jbpm.graph.exe.Token;
@@ -18,6 +22,7 @@ public class InstanceMonitor {
 	private boolean isRoot=true;
 	private String lastNode;
 	private String currentNode;
+	private Set<String> pastNodes=new HashSet<String>();
 	
 	public InstanceMonitor(){}
 	public InstanceMonitor(ProcessMonitor pm,ProcessInstance processInstance){
@@ -116,8 +121,16 @@ public class InstanceMonitor {
 	public void updateCurrentNode(String nodeName){
 		lastNode=currentNode;
 		currentNode=nodeName;
+		pastNodes.add(lastNode);
 		if(pm.getSetupState().equals(MonitorConstants.STATE_VALID))
 			pm.updateCurrentNode(this);
+	}
+	public boolean isPast(String currentNode,String partnerLinkType,Analyser internalAnalyser){
+		for(String node:pastNodes){
+			if(internalAnalyser.isMatch(node, partnerLinkType))
+				return true;
+		}
+		return false;
 	}
 	@Override
 	public String toString(){
@@ -128,6 +141,7 @@ public class InstanceMonitor {
 		s.append("ParentMonitorName: "+parentMonitorName+"\t\n");
 		s.append("ParentId: "+parentInstanceId+"\t\n");
 		s.append("LastNode: "+lastNode+" $$ CurrentNode: "+currentNode+"\t\n");
+		s.append("PastNodes: "+pastNodes.toString()+"\t\n");
 		s.append("/////////////////////////////end///////////////////////////////////////////////////////");
 		return s.toString();
 	}

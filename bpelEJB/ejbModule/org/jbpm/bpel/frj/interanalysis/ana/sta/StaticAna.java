@@ -32,32 +32,53 @@ public class StaticAna {
 		CFGGraph graph=reachabilityRecord.getBpelGraph();
 		futureList=new HashMap<Node,List>();
 		this.nodeMaps=graph.getNodesMap();
-//		Map nodeMap=org.jbpm.frj.graph.getNodesMap();
 //		Node start=graph.getStart();
 		Iterator i=this.nodeMaps.values().iterator();
 		while(i.hasNext()){
 			Node tempNode=(Node) i.next();
 			this.analysedNodes.clear();
-			List tempList=this.analyse(tempNode,new ArrayList<Node>());
-			reachabilityRecord.addPastNodes(tempNode,new ArrayList<Node>());
+//			List tempList=this.analyse(tempNode,new ArrayList<Node>());
+			List tempList=this.analyse(tempNode);
+//			reachabilityRecord.addPastNodes(tempNode,new ArrayList<Node>());
 			this.futureList.put(tempNode, tempList);
 		}
 		reachabilityRecord.setReachability(futureList);
 		this.reachabilityRecord=null;
 	}
 	
-	private List analyse(Node node,List<Node>pastList){
+//	private List analyse(Node node,List<Node>pastList){
+//		List fL=new ArrayList();
+//		if(!node.getNodeType().equals("$ProcessEndNode")){
+//			this.analysedNodes.add(node);
+//			pastList.add(node);
+//			List next=node.getNext();
+//			Iterator i=next.iterator();
+//			while(i.hasNext()){
+//				Node nextNode=(Node)i.next();
+//				if(!this.analysedNodes.contains(nextNode)){
+////					this.reachabilityRecord.addPastNodes(nextNode, pastList);
+//				List nextFL=analyse(nextNode,new ArrayList<Node>(pastList));
+//				//node.fl+next
+////				if(this.nodeMaps.containsValue(nextNode))
+//					fL.add(nextNode);
+//				//node.fl+next.fl
+//				fL=mergeFL(fL, nextFL);
+//				}
+//			}
+////			this.futureList.put(node, fL);
+//		}
+//		return fL;
+//	}
+	private List analyse(Node node){
 		List fL=new ArrayList();
 		if(!node.getNodeType().equals("$ProcessEndNode")){
 			this.analysedNodes.add(node);
-			pastList.add(node);
 			List next=node.getNext();
 			Iterator i=next.iterator();
 			while(i.hasNext()){
 				Node nextNode=(Node)i.next();
 				if(!this.analysedNodes.contains(nextNode)){
-					this.reachabilityRecord.addPastNodes(nextNode, pastList);
-				List nextFL=analyse(nextNode,new ArrayList<Node>(pastList));
+				List nextFL=analyse(nextNode);
 				//node.fl+next
 //				if(this.nodeMaps.containsValue(nextNode))
 					fL.add(nextNode);
@@ -65,11 +86,9 @@ public class StaticAna {
 				fL=mergeFL(fL, nextFL);
 				}
 			}
-//			this.futureList.put(node, fL);
 		}
 		return fL;
 	}
-	
 	private List mergeFL(List fL,List nextFL){
 		Iterator i=nextFL.iterator();
 		while(i.hasNext()){

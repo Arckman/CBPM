@@ -82,18 +82,18 @@ public class Analyser {
 		}
 		return result;
 	}
-	public boolean isPast(String currentNodeName,String partnerLinkType){
-		if(graph==null)
-			return false;
-		Node sourceNode=graph.findNode(currentNodeName);
-		for(Entry<String,String> entry:bpelModel.getOutgoPartnerLinkTypesMap().entrySet()){
-			if(entry.getValue().equals(partnerLinkType)){
-				if(reaRecord.isPast(sourceNode, entry.getKey()))
-					return true;
-			}
-		}
-		return false;
-	}
+//	public boolean isPast(String currentNodeName,String partnerLinkType){
+//		if(graph==null)
+//			return false;
+//		Node sourceNode=graph.findNode(currentNodeName);
+//		for(Entry<String,String> entry:bpelModel.getOutgoPartnerLinkTypesMap().entrySet()){
+//			if(entry.getValue().equals(partnerLinkType)){
+//				if(reaRecord.isPast(sourceNode, entry.getKey()))
+//					return true;
+//			}
+//		}
+//		return false;
+//	}
 	public boolean isS(String currentNodeName,String partnerLinkType){
 		if(graph==null)
 			return false;
@@ -132,6 +132,19 @@ public class Analyser {
 		}
 		return result;
 	}
+	/**
+	 * Is the node using the specific partnerlinktype
+	 * @param nodeName
+	 * @param partnerLinkType
+	 * @return
+	 */
+	public boolean isMatch(String nodeName,String partnerLinkType){
+		if(graph==null)
+			return false;
+		String plt=bpelModel.getOutgoPartnerLinkTypesMap().get(nodeName);
+		return partnerLinkType.equals(plt);
+	}
+	
 	public void doDynamicAna(ExecutionContext executionContext,String activityName){
 		Node node=this.graph.getNodesMap().get(activityName);
 		DynamicAna an=new DynamicAna();
