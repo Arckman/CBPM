@@ -24,6 +24,7 @@ import org.jbpm.JbpmConfiguration;
 import org.jbpm.JbpmContext;
 import org.jbpm.bpel.frj.monitor.InstanceMonitor;
 import org.jbpm.bpel.frj.monitor.ProcessMonitor;
+import org.jbpm.bpel.graph.basic.Assign;
 import org.jbpm.bpel.graph.basic.Wait;
 import org.jbpm.bpel.graph.exe.BpelFaultException;
 import org.jbpm.bpel.graph.scope.Scope;
@@ -37,7 +38,6 @@ import org.jbpm.graph.def.Node;
 import org.jbpm.graph.def.ProcessDefinition;
 import org.jbpm.graph.def.Transition;
 import org.jbpm.graph.exe.ExecutionContext;
-import org.jbpm.graph.exe.ProcessInstance;
 import org.jbpm.graph.exe.Token;
 import org.jbpm.util.Clock;
 
@@ -114,20 +114,20 @@ public abstract class Activity extends Node {
     token.setNodeEnter(Clock.getCurrentTime());
     
     //==========================sleep
-	try {
-			System.out.println(exeContext.getProcessDefinition().getName()+":"+exeContext.getProcessInstance().getId()+" at node "+token.getNode().getName());
-			if(this instanceof Wait)
-				Thread.currentThread().sleep(5000);
-			else
-				Thread.currentThread().sleep(3000);
-		} catch (InterruptedException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-    //===================================suspend if needed======================================
     ProcessMonitor pm=JbpmConfiguration.getVersionControlManager().getProcessMonitor(exeContext.getProcessDefinition().getName());
     InstanceMonitor im=pm.getInstanceMonitor(exeContext.getProcessInstance().getId());
+    //===================================suspend if needed======================================
     if(im!=null){//last node of process(sequence$end,scope$end,and so on),im==null
+    	try {
+    		System.out.println(exeContext.getProcessDefinition().getName()+":"+exeContext.getProcessInstance().getId()+"-"+im.getRootInstanceId()+" at node "+token.getNode().getName());
+    		if(this instanceof Assign)
+    			Thread.currentThread().sleep(1500);
+//			else
+//				Thread.currentThread().sleep(3000);
+    	} catch (InterruptedException e1) {
+    		// TODO Auto-generated catch block
+    		e1.printStackTrace();
+    	}
 	    if(pm.isSuspend()){
 	    	System.out.println(exeContext.getProcessDefinition().getName()+":"+exeContext.getProcessInstance().getId()+" suspend at node("+
 	    			exeContext.getToken().getNode().getName()+"_enter)!");

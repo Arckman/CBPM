@@ -20,6 +20,10 @@ import javax.xml.namespace.QName;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
+import org.jbpm.JbpmConfiguration;
+import org.jbpm.bpel.frj.monitor.InstanceMonitor;
+import org.jbpm.bpel.frj.monitor.ProcessMonitor;
+import org.jbpm.bpel.graph.basic.Reply;
 import org.jbpm.bpel.integration.IntegrationService;
 import org.jbpm.bpel.variable.def.VariableDefinition;
 import org.jbpm.bpel.variable.exe.MessageValue;
@@ -76,6 +80,10 @@ public class ReplyAction extends MessageAction {
   public void execute(ExecutionContext exeContext) {
     IntegrationService integrationService = ReceiveAction.getIntegrationService(exeContext.getJbpmContext());
     integrationService.reply(this, exeContext.getToken());
+    ProcessMonitor pm=JbpmConfiguration.getVersionControlManager().getProcessMonitor(exeContext.getProcessDefinition().getName());
+	InstanceMonitor im=pm.getInstanceMonitor(exeContext.getProcessInstance().getId());
+	JbpmConfiguration.getVersionControlManager().removeInstanceMonitor(exeContext.getProcessInstance());
+	im.TXEnd();
     exeContext.leaveNode();
   }
 

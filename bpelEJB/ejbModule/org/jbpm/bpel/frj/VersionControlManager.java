@@ -14,6 +14,7 @@ import org.jbpm.bpel.frj.monitor.ProcessMonitor;
 import org.jbpm.bpel.frj.monitor.StaticEdge;
 import org.jbpm.bpel.frj.util.ComConstants;
 import org.jbpm.bpel.frj.util.MonitorConstants;
+import org.jbpm.bpel.frj.util.TestWriter;
 import org.jbpm.bpel.graph.def.BpelProcessDefinition;
 import org.jbpm.graph.def.ProcessDefinition;
 import org.jbpm.graph.exe.ProcessInstance;
@@ -116,6 +117,9 @@ public class VersionControlManager {
 		ProcessMonitor pm=monitors.get(processName);
 		//check process monitor state
 		if(pm.getSetupState().equals(MonitorConstants.STATE_NORMAL)){//need on-demand setup
+			String str="*************Start time... "+System.currentTimeMillis()+" **************";
+			System.out.println(str);
+			TestWriter.writeResult(str);
 			pm.setNeedUpdate(true);
 			pm.receiveScopeREQ(null);
 		}else if(pm.getSetupState().equals(MonitorConstants.STATE_VALID)){//valid, do update
@@ -126,9 +130,13 @@ public class VersionControlManager {
 		if(needUpdate)
 			synchronized(this){
 				System.out.println("VM updating..");
-				needUpdate=false;
+				String str="***************Update time..."+System.currentTimeMillis()+" **************";
+				System.out.println(str);
+				TestWriter.writeResult(str);
 //				if(strategy.equals(MonitorConstants.STRATRGY_WAIT))
 					notifyAll();
+				
+				needUpdate=false;
 		}
 	}
 	/**

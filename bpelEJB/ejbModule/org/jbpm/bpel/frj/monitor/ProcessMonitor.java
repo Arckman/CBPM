@@ -3,6 +3,7 @@ package org.jbpm.bpel.frj.monitor;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -14,6 +15,7 @@ import org.jbpm.bpel.frj.communication.SimpleCommunicatorImpl;
 import org.jbpm.bpel.frj.interanalysis.mgr.Analyser;
 import org.jbpm.bpel.frj.util.ComConstants;
 import org.jbpm.bpel.frj.util.MonitorConstants;
+import org.jbpm.bpel.frj.util.TestWriter;
 import org.jbpm.bpel.graph.def.BpelProcessDefinition;
 import org.jbpm.bpel.integration.jms.IntegrationControl;
 import org.jbpm.graph.exe.ProcessInstance;
@@ -22,8 +24,8 @@ public class ProcessMonitor {
 	private VersionControlManager vcManager;
 	private String processName;
 	private long processId;
-	private List<DynamicDependency> OES=new ArrayList<DynamicDependency>();
-	private List<DynamicDependency> IES=new ArrayList<DynamicDependency>();
+	private List<DynamicDependency> OES=Collections.synchronizedList(new ArrayList<DynamicDependency>());
+	private List<DynamicDependency> IES=Collections.synchronizedList(new ArrayList<DynamicDependency>());
 	private boolean needUpdate=false;
 	//namespace
 	private String nameSpace;
@@ -35,7 +37,7 @@ public class ProcessMonitor {
 	private Map<StaticEdge,String>edgeMapPartnerLinkType=new HashMap<StaticEdge,String>();//edge-->partnerLinkType
 	private Map<String,StaticEdge>partnerLinkTypeMapEdge=new HashMap<String,StaticEdge>();//partnerLinkType-->edge
 	private boolean suspend=false;
-	private Map<Long,InstanceMonitor> instanceMonitors=new HashMap<Long,InstanceMonitor>();
+	private Map<Long,InstanceMonitor> instanceMonitors=Collections.synchronizedMap(new HashMap<Long,InstanceMonitor>());
 	private Set<StaticEdge> scope=new HashSet<StaticEdge>();
 	private Set<StaticEdge> incomeEdgeConfirm=new HashSet<StaticEdge>();//record income process which need ack
 	private Set<StaticEdge> outgoEdgeConfirm=new HashSet<StaticEdge>();//record outgo process to which ack send
@@ -757,7 +759,7 @@ public class ProcessMonitor {
 		}
 	}
 	
-	public synchronized void receiveSubTXInitACK(DynamicDependency dd){
+	public void receiveSubTXInitACK(DynamicDependency dd){
 		if(checkInfoUpdateNeeded(dd.getRootMonitorName(), dd.getRootInstanceId()))
 			removeFuture(dd);
 	}
@@ -771,9 +773,9 @@ public class ProcessMonitor {
 		}
 	}
 	public void rootTXEnd(InstanceMonitor im){
-		
+		System.out.println(instanceMonitors.toString());
 	}
-	public synchronized void subTXEnd(InstanceMonitor im){
+	public void subTXEnd(InstanceMonitor im){
 		if(checkInfoUpdateNeeded(im.getRootMonitorName(), im.getRootInstanceId())){
 			DynamicDependency dd=new DynamicDependency(im.getParentMonitorName(),processName,im.getRootMonitorName(),im.getRootInstanceId(),
 					null);
@@ -846,11 +848,25 @@ public class ProcessMonitor {
 			if(vcManager.getStrategy().equals(MonitorConstants.STRATEGY_CONCURRENT)){
 				if(vcManager.checkDynamicUpdatable()){
 					System.out.println("Updating "+processName+" using cv strategy...");
+					setupState=MonitorConstants.STATE_UPDATE;
 					vcManager.doUpdate();
+					//case sleep,state<-update,vm.doUpdate,state<-valid,case wake up,case invoking new url which hasn't been deployed
+					//don't need this sleep if cases never use sleep.
+					try {
+    					Thread.currentThread().sleep(3000);
+    				} catch (InterruptedException e) {
+    					// TODO Auto-generated catch block
+    					e.printStackTrace();
+    				}
+					setupState=MonitorConstants.STATE_VALID;
+					synchronized(this){
+						this.notifyAll();
+						
+					}
 				}
 				if(checkFreeness()&&setupState.equals(MonitorConstants.STATE_VALID)){
-					needUpdate=false;
 					receiveCleanupREQ();
+					needUpdate=false;
 				}
 			}else{
 				//check freeness//update using double check
@@ -864,13 +880,13 @@ public class ProcessMonitor {
 						vcManager.doUpdate();
 						needUpdate=false;
 						receiveCleanupREQ();
-						this.notifyAll();
+						synchronized(this){this.notifyAll();}
 					}
 					else{
 						System.out.println("Double check false, update cancelled!");
 						setupState=MonitorConstants.STATE_VALID;
 						if(vcManager.getStrategy().equals(MonitorConstants.STRATEGY_WAIT))
-							this.notifyAll();
+							synchronized(this){this.notifyAll();}
 					}
 				}
 			}
@@ -919,6 +935,9 @@ public class ProcessMonitor {
 	public void receiveCleanupREQ(){
 		if(!setupState.equals(MonitorConstants.STATE_NORMAL)){
 			System.out.println(processName+" clean up!");
+			String str="************** Clean up time..."+System.currentTimeMillis()+" *************";
+			System.out.println(str);
+			TestWriter.writeResult(str);
 			setupState=MonitorConstants.STATE_NORMAL;
 			cleanup();
 			for(StaticEdge edge:incomeEdge){

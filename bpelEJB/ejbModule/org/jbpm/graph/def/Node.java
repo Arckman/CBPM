@@ -346,16 +346,16 @@ public class Node extends GraphElement implements Parsable {
 //    		  System.out.println("test");
     	  }
     	  //=========  if the node is reply, it is the end of process. We have to move these work before end of subTX, otherwise root will new subTX which will run and effect future and past
-    	  ProcessMonitor pm=JbpmConfiguration.getVersionControlManager().getProcessMonitor(executionContext.getProcessDefinition().getName());
-    	  InstanceMonitor im=pm.getInstanceMonitor(executionContext.getProcessInstance().getId());
-    	  if(this instanceof Reply){
-    		  JbpmConfiguration.getVersionControlManager().removeInstanceMonitor(executionContext.getProcessInstance());
-    	  }
+//    	  ProcessMonitor pm=JbpmConfiguration.getVersionControlManager().getProcessMonitor(executionContext.getProcessDefinition().getName());
+//    	  InstanceMonitor im=pm.getInstanceMonitor(executionContext.getProcessInstance().getId());
+//    	  if(this instanceof Reply){
+//    		  JbpmConfiguration.getVersionControlManager().removeInstanceMonitor(executionContext.getProcessInstance());
+//    	  }
         // execute the action
         executeAction(action, executionContext);
-        if(this instanceof Reply){
-  		  im.TXEnd();
-  	  }
+//        if(this instanceof Reply){
+//  		  im.TXEnd();
+//  	  }
       } catch (Exception exception) {
         // NOTE that Error's are not caught because that might halt the JVM and mask the original Error.
         // search for an exception handler or throw to the client
@@ -407,20 +407,20 @@ public class Node extends GraphElement implements Parsable {
     // the transitionSource is used to calculate events on superstates
     executionContext.setTransitionSource(this);
     //============================leave node and check suspend============================
-    ProcessMonitor pm=JbpmConfiguration.getVersionControlManager().getProcessMonitor(executionContext.getProcessDefinition().getName());
-    if(pm.isSuspend()){
-    	InstanceMonitor im=pm.getInstanceMonitor(executionContext.getProcessInstance().getId());
-    	synchronized(im){
-	    	try {
-	    		System.out.println(executionContext.getProcessDefinition().getName()+":"+executionContext.getProcessInstance().getId()+" suspend at node("+
-	    	executionContext.getToken().getNode().getName()+"_leave)!");
-				im.wait();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-    	}
-    }
+//    ProcessMonitor pm=JbpmConfiguration.getVersionControlManager().getProcessMonitor(executionContext.getProcessDefinition().getName());
+//    if(pm.isSuspend()){
+//    	InstanceMonitor im=pm.getInstanceMonitor(executionContext.getProcessInstance().getId());
+//    	synchronized(im){
+//	    	try {
+//	    		System.out.println(executionContext.getProcessDefinition().getName()+":"+executionContext.getProcessInstance().getId()+" suspend at node("+
+//	    	executionContext.getToken().getNode().getName()+"_leave)!");
+//				im.wait();
+//			} catch (InterruptedException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//    	}
+//    }
     	
     // take the transition
     transition.take(executionContext);
