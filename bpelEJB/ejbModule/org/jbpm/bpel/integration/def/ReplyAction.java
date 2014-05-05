@@ -23,6 +23,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.jbpm.JbpmConfiguration;
 import org.jbpm.bpel.frj.monitor.InstanceMonitor;
 import org.jbpm.bpel.frj.monitor.ProcessMonitor;
+import org.jbpm.bpel.frj.util.MonitorConstants;
 import org.jbpm.bpel.graph.basic.Reply;
 import org.jbpm.bpel.integration.IntegrationService;
 import org.jbpm.bpel.variable.def.VariableDefinition;
@@ -78,10 +79,10 @@ public class ReplyAction extends MessageAction {
   }
 
   public void execute(ExecutionContext exeContext) {
+	  ProcessMonitor pm=JbpmConfiguration.getVersionControlManager().getProcessMonitor(exeContext.getProcessDefinition().getName());
+	  InstanceMonitor im=pm.getInstanceMonitor(exeContext.getProcessInstance().getId());
     IntegrationService integrationService = ReceiveAction.getIntegrationService(exeContext.getJbpmContext());
     integrationService.reply(this, exeContext.getToken());
-    ProcessMonitor pm=JbpmConfiguration.getVersionControlManager().getProcessMonitor(exeContext.getProcessDefinition().getName());
-	InstanceMonitor im=pm.getInstanceMonitor(exeContext.getProcessInstance().getId());
 	JbpmConfiguration.getVersionControlManager().removeInstanceMonitor(exeContext.getProcessInstance());
 	im.TXEnd();
     exeContext.leaveNode();

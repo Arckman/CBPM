@@ -23,8 +23,8 @@ public class VersionControlManager {
 
 	private boolean needUpdate=false;//indicate need for update
 	private Map<String,ProcessMonitor> monitors=new HashMap<String,ProcessMonitor>();
-	private String strategy=MonitorConstants.STRATEGY_CONCURRENT;
-//	private String strategy=MonitorConstants.STRATEGY_WAIT;
+//	private String strategy=MonitorConstants.STRATEGY_CONCURRENT;
+	private String strategy=MonitorConstants.STRATEGY_WAIT;
 //	private String strategy=MonitorConstants.STRATEGY_BLOCK;
 	private Map<URL,ProcessMonitor> urlMapPM=new HashMap<URL,ProcessMonitor>();
 	

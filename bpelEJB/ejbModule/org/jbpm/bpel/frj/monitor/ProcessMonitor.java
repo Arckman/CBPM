@@ -158,12 +158,14 @@ public class ProcessMonitor {
 	}
 	public void setSuspend(boolean b){suspend=b;}
 	public boolean isSuspend(){return suspend;}
-	public void resume(){
+	public synchronized void resume(){
 		System.out.println(processName+" will resumes all instance!");
 		suspend=false;
-		for(InstanceMonitor im:instanceMonitors.values()){
-			synchronized(im){
-				im.notifyAll();
+		synchronized(instanceMonitors){
+			for(InstanceMonitor im:instanceMonitors.values()){
+				synchronized(im){
+					im.notifyAll();
+				}
 			}
 		}
 	}
@@ -325,7 +327,7 @@ public class ProcessMonitor {
 		}
 	}
 	
-	public void setup(){
+	public synchronized void setup(){
 		System.out.println(processName+" starts setup...");
 		for(InstanceMonitor im:instanceMonitors.values()){
 			DynamicDependency lfe=new DynamicDependency(processName,processName,im.getRootMonitorName(),im.getRootInstanceId(),MonitorConstants.DYNAMICDEPENDENCY_FUTURE);
@@ -644,7 +646,7 @@ public class ProcessMonitor {
 	 * @param id
 	 * @return
 	 */
-	private InstanceMonitor getSubInstance(String rootMonitorName,long id){
+	private synchronized InstanceMonitor getSubInstance(String rootMonitorName,long id){
 		if(instanceMonitors!=null)
 			for(InstanceMonitor temp:instanceMonitors.values()){
 				if(temp.getRootMonitorName().equals(rootMonitorName)&&temp.getRootInstanceId()==id)
@@ -679,19 +681,24 @@ public class ProcessMonitor {
 	 * ACK during on-going dynamic dependency management seems to be trivial, so neglect them! 
 	 * Two past/future create functions can be merge with past/future notify functions above. Using two new functions for simplification.
 	 */
-	public synchronized void rootTXInit(InstanceMonitor im){
+	public void rootTXInit(InstanceMonitor im){
 		if(checkInfoUpdateNeeded(im.getRootMonitorName(), im.getRootInstanceId())){
 			if(true){
+				System.out.println(im.getPm().getProcessName()+":"+im.getInstanceId()+" in rootTXInit");
 				DynamicDependency lfe=new DynamicDependency(processName, processName, processName, im.getInstanceId(),
 						MonitorConstants.DYNAMICDEPENDENCY_FUTURE);
 				DynamicDependency lpe=new DynamicDependency(processName, processName, processName, im.getInstanceId(),
 						MonitorConstants.DYNAMICDEPENDENCY_PAST);
+				synchronized(OES){
 				OES.add(lfe);OES.add(lpe);
+				}
+				synchronized(IES){
 				IES.add(lfe);IES.add(lpe);
+				}
 				for(StaticEdge edge:outgoEdge){
 					DynamicDependency dd=new DynamicDependency(processName, edge.getTarget(), processName, im.getInstanceId(),
 							MonitorConstants.DYNAMICDEPENDENCY_FUTURE);
-					OES.add(dd);
+					synchronized(OES){OES.add(dd);}
 					sendCMD(processName,edge.getTarget(),ComConstants.FUTURE_CREATE_NOTIFY,dd.clone());
 				}
 			}
@@ -699,26 +706,32 @@ public class ProcessMonitor {
 	}
 	public synchronized void subTXInit(InstanceMonitor im){
 		if(checkInfoUpdateNeeded(im.getRootMonitorName(), im.getRootInstanceId())){
+			System.out.println(im.getPm().getProcessName()+":"+im.getInstanceId()+" in subTXInit");
 			DynamicDependency lfe=new DynamicDependency(processName, processName, im.getRootMonitorName(), im.getRootInstanceId(),
 					MonitorConstants.DYNAMICDEPENDENCY_FUTURE);
 			DynamicDependency lpe=new DynamicDependency(processName, processName, im.getRootMonitorName(), im.getRootInstanceId(),
 					MonitorConstants.DYNAMICDEPENDENCY_PAST);
-			OES.add(lpe);OES.add(lfe);
-			IES.add(lpe);IES.add(lfe);
+			synchronized(OES){
+				OES.add(lfe);OES.add(lpe);
+				}
+				synchronized(IES){
+				IES.add(lfe);IES.add(lpe);
+				}
 			DynamicDependency dd=new DynamicDependency(im.getParentMonitorName(), processName,
 					im.getRootMonitorName(),im.getRootInstanceId(),null);
 			sendCMD(processName,im.getParentMonitorName(),ComConstants.SUBTX_INIT_ACK,dd.clone());
 		}
 	}
-	public synchronized void receiveFutureCreate(DynamicDependency dd){
+	public void receiveFutureCreate(DynamicDependency dd){
 		if(checkInfoUpdateNeeded(dd.getRootMonitorName(), dd.getRootInstanceId())){
+			System.out.println("Child of "+dd.getRootMonitorName()+":"+dd.getRootInstanceId()+" in receiveFutureCreate");
 			if(dd!=null&&(!IES.contains(dd))){
-				IES.add(dd);
+				synchronized(IES){IES.add(dd);}
 				for(StaticEdge edge:outgoEdge){
 					DynamicDependency d=new DynamicDependency(processName, edge.getTarget(), dd.getRootMonitorName(), dd.getRootInstanceId(),
 							MonitorConstants.DYNAMICDEPENDENCY_FUTURE);
 					if(!OES.contains(d)){
-						OES.add(d);
+						synchronized(OES){OES.add(d);}
 						sendCMD(processName,edge.getTarget(),ComConstants.FUTURE_CREATE_NOTIFY,d.clone());
 					}
 				}
@@ -729,17 +742,20 @@ public class ProcessMonitor {
 	 * remove all outgo future paths having same root TX with dd.root
 	 * @param dd
 	 */
-	private synchronized void removeFuture(DynamicDependency dd){
+	private void removeFuture(DynamicDependency dd){
 		if(checkInfoUpdateNeeded(dd.getRootMonitorName(), dd.getRootInstanceId())){
+			System.out.println("Child of "+dd.getRootMonitorName()+":"+dd.getRootInstanceId()+" in removeFuture");
 			List<DynamicDependency> remove=new ArrayList<DynamicDependency>();
 			List<DynamicDependency> clone=new ArrayList<DynamicDependency>(OES);//TODO multi-thread will not has synchronous and concurrent problems
 			for(DynamicDependency outgo:clone){
 				if(!outgo.getTargetMonitorName().equals(processName)&&outgo.equalRootTX(dd)&&outgo.getType().equals(MonitorConstants.DYNAMICDEPENDENCY_FUTURE)){
 					boolean futureIncome=false;
-					for(DynamicDependency income:IES){
-						if((!income.getSourceMonitorName().equals(processName))&&income.equalRootTX(dd)&&income.getType().equals(MonitorConstants.DYNAMICDEPENDENCY_FUTURE)){//future income
-							futureIncome=true;
-							break;
+					synchronized(IES){
+						for(DynamicDependency income:IES){
+							if((!income.getSourceMonitorName().equals(processName))&&income.equalRootTX(dd)&&income.getType().equals(MonitorConstants.DYNAMICDEPENDENCY_FUTURE)){//future income
+								futureIncome=true;
+								break;
+							}
 						}
 					}
 					if(!futureIncome){
@@ -763,9 +779,10 @@ public class ProcessMonitor {
 		if(checkInfoUpdateNeeded(dd.getRootMonitorName(), dd.getRootInstanceId()))
 			removeFuture(dd);
 	}
-	public synchronized void receiveFutureRemove(DynamicDependency dd){
+	public void receiveFutureRemove(DynamicDependency dd){
 		if(checkInfoUpdateNeeded(dd.getRootMonitorName(), dd.getRootInstanceId())){
-			IES.remove(dd);
+			System.out.println("Child of "+dd.getRootMonitorName()+":"+dd.getRootInstanceId()+" in receiveFutureRemove");
+			synchronized(IES){IES.remove(dd);}
 			removeFuture(dd);
 			//remove future may lead to freeness
 			if(needUpdate)
@@ -777,13 +794,14 @@ public class ProcessMonitor {
 	}
 	public void subTXEnd(InstanceMonitor im){
 		if(checkInfoUpdateNeeded(im.getRootMonitorName(), im.getRootInstanceId())){
+			System.out.println(im.getPm().getProcessName()+":"+im.getInstanceId()+" in subTXEnd");
 			DynamicDependency dd=new DynamicDependency(im.getParentMonitorName(),processName,im.getRootMonitorName(),im.getRootInstanceId(),
 					null);
 			sendCMD(processName,im.getParentMonitorName(),ComConstants.SUBTX_END_NOTIFY,dd.clone());
 		}
 	}
 	
-	public synchronized void receiveSubTXEnd(DynamicDependency dd){
+	public void receiveSubTXEnd(DynamicDependency dd){
 		if(checkInfoUpdateNeeded(dd.getRootMonitorName(), dd.getRootInstanceId())){
 			InstanceMonitor im=getSubInstance(dd.getRootMonitorName(), dd.getRootInstanceId());
 			DynamicDependency past=new DynamicDependency(processName,dd.getTargetMonitorName(),im.getRootMonitorName(),im.getRootInstanceId(),
@@ -792,15 +810,18 @@ public class ProcessMonitor {
 			sendCMD(processName,dd.getTargetMonitorName(),ComConstants.PAST_CREATE_NOTIFY,past.clone());
 		}
 	}
-	public synchronized void receivePastCreate(DynamicDependency dd){
+	public void receivePastCreate(DynamicDependency dd){
 		if(checkInfoUpdateNeeded(dd.getRootMonitorName(), dd.getRootInstanceId())){
-			IES.add(dd);
+			System.out.println("Child of "+dd.getRootMonitorName()+":"+dd.getRootInstanceId()+" in receivePastCreate");
+			synchronized(IES){IES.add(dd);}
 			boolean noSameRootTX=true;
+			synchronized(instanceMonitors){
 			for(InstanceMonitor im:instanceMonitors.values()){
 				if(im.getRootMonitorName().equals(dd.getRootMonitorName())&&im.getRootInstanceId()==dd.getRootInstanceId()){
 					noSameRootTX=false;
 					break;
 				}
+			}
 			}
 			if(noSameRootTX){
 				DynamicDependency lfe=new DynamicDependency(processName, processName, dd.getRootMonitorName(),dd.getRootInstanceId(),
@@ -808,8 +829,8 @@ public class ProcessMonitor {
 				DynamicDependency lpe=new DynamicDependency(processName, processName, dd.getRootMonitorName(), dd.getRootInstanceId(),
 						MonitorConstants.DYNAMICDEPENDENCY_PAST);
 				if(OES.contains(lfe)){
-					OES.remove(lfe);OES.remove(lpe);
-					IES.remove(lfe);IES.remove(lpe);
+					synchronized(OES){OES.remove(lfe);OES.remove(lpe);}
+					synchronized(IES){IES.remove(lfe);IES.remove(lpe);}
 				}
 				//tx past,and there is any other future?
 				removeFuture(dd);
@@ -852,12 +873,12 @@ public class ProcessMonitor {
 					vcManager.doUpdate();
 					//case sleep,state<-update,vm.doUpdate,state<-valid,case wake up,case invoking new url which hasn't been deployed
 					//don't need this sleep if cases never use sleep.
-					try {
-    					Thread.currentThread().sleep(3000);
-    				} catch (InterruptedException e) {
-    					// TODO Auto-generated catch block
-    					e.printStackTrace();
-    				}
+//					try {
+//    					Thread.currentThread().sleep(3000);
+//    				} catch (InterruptedException e) {
+//    					// TODO Auto-generated catch block
+//    					e.printStackTrace();
+//    				}
 					setupState=MonitorConstants.STATE_VALID;
 					synchronized(this){
 						this.notifyAll();
@@ -912,14 +933,17 @@ public class ProcessMonitor {
 	 * @return
 	 */
 	public boolean checkHasPast(String rootMonitorName,long rootId){
+		System.out.println("Child of "+rootMonitorName+":"+rootId+" in checkHasPast");
 		DynamicDependency dd=new DynamicDependency(null, null, rootMonitorName, rootId, null);
+		synchronized(IES){
 		for(DynamicDependency past:IES){
 			if(past.getType().equals(MonitorConstants.DYNAMICDEPENDENCY_PAST)&&past.equalRootTX(dd))
 				return true;
 		}
+		}
 		return false;
 	}
-	private boolean checkFreeness(){
+	private synchronized boolean checkFreeness(){
 		System.out.println(IES);
 		for(int i=0;i<IES.size();i++){
 			DynamicDependency p=IES.get(i);
@@ -945,12 +969,14 @@ public class ProcessMonitor {
 			}
 		}
 	}
-	private synchronized void cleanup(){
+	private void cleanup(){
 		scope.clear();
 		confirmSetClear();
-		IES.clear();OES.clear();
+		synchronized(IES){IES.clear();}
+		synchronized(OES){OES.clear();}
 		if(urls.size()==2)
-			urls.remove(0);
+//			urls.remove(0);
+			urls.remove(1);//for test
 	}
 	
 	@Override

@@ -25,6 +25,7 @@ import org.jbpm.JbpmContext;
 import org.jbpm.bpel.frj.monitor.InstanceMonitor;
 import org.jbpm.bpel.frj.monitor.ProcessMonitor;
 import org.jbpm.bpel.graph.basic.Assign;
+import org.jbpm.bpel.graph.basic.Empty;
 import org.jbpm.bpel.graph.basic.Wait;
 import org.jbpm.bpel.graph.exe.BpelFaultException;
 import org.jbpm.bpel.graph.scope.Scope;
@@ -121,9 +122,9 @@ public abstract class Activity extends Node {
     	try {
     		System.out.println(exeContext.getProcessDefinition().getName()+":"+exeContext.getProcessInstance().getId()+"-"+im.getRootInstanceId()+" at node "+token.getNode().getName());
     		if(this instanceof Assign)
-    			Thread.currentThread().sleep(1500);
-//			else
-//				Thread.currentThread().sleep(3000);
+    			Thread.currentThread().sleep(1000);
+			else if(this instanceof Empty)
+				Thread.currentThread().sleep(2000);
     	} catch (InterruptedException e1) {
     		// TODO Auto-generated catch block
     		e1.printStackTrace();
