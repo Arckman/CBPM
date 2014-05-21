@@ -13,7 +13,7 @@ public class TestWriter {
 		try {
 			file=new File(path);
 			w=new FileWriter(file,true);
-			w.write(path);
+			w.write(str);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

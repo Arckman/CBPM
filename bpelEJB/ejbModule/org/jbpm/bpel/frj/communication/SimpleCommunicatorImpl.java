@@ -46,7 +46,13 @@ public class SimpleCommunicatorImpl implements Communicator{
 	}
 	public void send() {
 		// TODO Auto-generated method stub
-		receive();
+		System.out.println("Sending msg: "+source+" to "+target+" using cmd ["+command+"]("+msg+")");
+		Thread t=new Thread(){
+			public void run(){
+				receive();
+			}
+		};
+		t.start();
 	}
 	public void receive() {
 		// TODO Auto-generated method stub

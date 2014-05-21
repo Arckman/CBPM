@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.jbpm.JbpmConfiguration;
 import org.jbpm.JbpmContext;
+import org.jbpm.bpel.frj.VersionControlManager;
 import org.jbpm.bpel.frj.monitor.InstanceMonitor;
 import org.jbpm.bpel.frj.monitor.ProcessMonitor;
 import org.jbpm.bpel.graph.basic.Assign;
@@ -225,6 +226,26 @@ public abstract class Activity extends Node {
    */
   public void leave(ExecutionContext exeContext) {
 	//===========
+	   VersionControlManager vm=JbpmConfiguration.getVersionControlManager();
+	   ProcessMonitor pm=vm.getProcessMonitor(exeContext.getProcessDefinition().getName());
+	   InstanceMonitor im=pm.getInstanceMonitor(exeContext.getProcessInstance().getId());
+	   if(im!=null){
+		   if(pm.isSuspend()){
+			   synchronized(im){
+				   if(pm.isSuspend()){
+					   System.out.println(pm.getProcessName()+":"+im.getInstanceId()+"-"+im.getRootInstanceId()+" suspend at node "+name+"(leave)");
+					   try {
+						im.wait();
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				   }
+				   
+			   }
+		   }
+	   }
+	   
       if(this instanceof Wait)
       	System.out.println(exeContext.getProcessDefinition().getName()+":"+exeContext.getProcessInstance().getId()+" finishing waiting!");
     Token token = exeContext.getToken();

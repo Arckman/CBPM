@@ -39,7 +39,7 @@ public class ProcessMonitor {
 	private boolean suspend=false;
 	private Map<Long,InstanceMonitor> instanceMonitors=Collections.synchronizedMap(new HashMap<Long,InstanceMonitor>());
 	private Set<StaticEdge> scope=new HashSet<StaticEdge>();
-	private Set<StaticEdge> incomeEdgeConfirm=new HashSet<StaticEdge>();//record income process which need ack
+	private Set<StaticEdge> incomeEdgeConfirm=Collections.synchronizedSet(new HashSet<StaticEdge>());//record income process which need ack
 	private Set<StaticEdge> outgoEdgeConfirm=new HashSet<StaticEdge>();//record outgo process to which ack send
 	private Set<DynamicDependency> notifyIncomeFutureDependencies=new HashSet<DynamicDependency>();//record notify edges which need ack
 	private Set<DynamicDependency> notifyOutgoFutureDependencies=new HashSet<DynamicDependency>();
@@ -135,26 +135,33 @@ public class ProcessMonitor {
 	public List<StaticEdge> getIncomeStaticEdges(){return this.incomeEdge;}
 	public List<StaticEdge> getOutgoStaticEdges(){return this.outgoEdge;}
 	private void confirmSetClear(){
-		incomeEdgeConfirm.clear();outgoEdgeConfirm.clear();
-		notifyIncomeFutureDependencies.clear();notifyOutgoFutureDependencies.clear();
-		notifyIncomePastDependencies.clear();notifyOutgoPastDependencies.clear();
-		subNotifyIncomeFutureDependencies.clear();subNotifyOutgoFutureDependencies.clear();
-		subNotifyIncomePastDependencies.clear();subNotifyOutgoPastDependencies.clear();
+		synchronized(incomeEdgeConfirm){incomeEdgeConfirm.clear();}synchronized(outgoEdgeConfirm){outgoEdgeConfirm.clear();}
+		synchronized(notifyIncomeFutureDependencies){notifyIncomeFutureDependencies.clear();}
+		synchronized(notifyOutgoFutureDependencies){notifyOutgoFutureDependencies.clear();}
+		synchronized(notifyIncomePastDependencies){notifyIncomePastDependencies.clear();}
+		synchronized(notifyOutgoPastDependencies){notifyOutgoPastDependencies.clear();}
+		synchronized(subNotifyIncomeFutureDependencies){subNotifyIncomeFutureDependencies.clear();}
+		synchronized(subNotifyOutgoFutureDependencies){subNotifyOutgoFutureDependencies.clear();}
+		synchronized(subNotifyIncomePastDependencies){subNotifyIncomePastDependencies.clear();}
+		synchronized(subNotifyOutgoPastDependencies){subNotifyOutgoPastDependencies.clear();}
 	}
 	public InstanceMonitor addInstanceMonitor(BpelProcessDefinition bpelProcessDefinition,ProcessInstance processInstance){
 		InstanceMonitor im=new InstanceMonitor(this,processInstance);
+		synchronized(instanceMonitors){
 		if(instanceMonitors.containsKey(processInstance.getId()))
 			System.out.println("Error! Duplicated process instance ID!");
 		else
 			instanceMonitors.put(processInstance.getId(), im);
 		return im;
+		}
 	}
 	public InstanceMonitor getInstanceMonitor(long instanceId){return instanceMonitors.get((Long)instanceId);}
 	public void removeInstanceMonitor(ProcessInstance processInstance){
-		instanceMonitors.remove(processInstance.getId());
+		synchronized(instanceMonitors){instanceMonitors.remove(processInstance.getId());}
 	}
 	public void removeInstanceMonitor(long id){
-		instanceMonitors.remove(id);
+		synchronized(instanceMonitors){
+		instanceMonitors.remove(id);}
 	}
 	public void setSuspend(boolean b){suspend=b;}
 	public boolean isSuspend(){return suspend;}
@@ -200,18 +207,13 @@ public class ProcessMonitor {
 	 * @param cmd
 	 * @param c
 	 */
-	private void sendCollectionCMD(final String cmd,Collection c){
-		for(Object o:c){
-			final Object msg=o;
+	private void sendCMDAsyn(final String source,final String target,final String cmd,final Object o){
 			Thread t=new Thread(){
 				public void run(){
-					String source=null;//source=msg.source
-					String target=null;//target=msg.target
-					sendCMD(source,target,cmd,msg);
+					sendCMD(source,target,cmd,o);
 				}
 			};
 			t.start();
-		}
 	}
 	//======================on-demand functions
 	/**
@@ -219,28 +221,30 @@ public class ProcessMonitor {
 	 * @param edge
 	 */
 	public void receiveScopeREQ(StaticEdge edge){
-//		System.out.println(processName+" recieve SCOPE_REQ");
-//		System.out.println(toString());
+		System.out.println(processName+" recieve SCOPE_REQ "+edge);
 		if(edge!=null){
 			if(!scope.contains(edge))
 				scope.add(edge);
-			outgoEdgeConfirm.add(edge);
+			synchronized(outgoEdgeConfirm){outgoEdgeConfirm.add(edge);}
 		}
+//		System.out.println(toString());
 		//compute scope
 		if(incomeEdge.size()==0)//first process
-			receiveScopeACK(null);
+			receiveScopeACK(edge);
 		else if(scope.size()==1||scope.size()==0){//first time REQ visit
+			synchronized(incomeEdgeConfirm){
 			for(StaticEdge e:incomeEdge){
-				incomeEdgeConfirm.add(e);
-//				sendCMD(processName,e.getSource(),ComConstants.SCOPE_REQUEST,e.clone());
+				synchronized(incomeEdgeConfirm){incomeEdgeConfirm.add(e);}
+				sendCMD(processName,e.getSource(),ComConstants.SCOPE_REQUEST,e.clone());
+			}
 			}
 			//TODO clone set for solving asynchronous and concurrent problem
-			Set<StaticEdge> sendSet=new HashSet(incomeEdge);
-			for(StaticEdge e:sendSet)//change synchronize communication to asynchronize
-				sendCMD(e.getTarget(),e.getSource(),ComConstants.SCOPE_REQUEST,e.clone());
+//			Set<StaticEdge> sendSet=new HashSet(incomeEdge);
+//			for(StaticEdge e:sendSet)//change synchronize communication to asynchronize
+//				sendCMD(e.getTarget(),e.getSource(),ComConstants.SCOPE_REQUEST,e.clone());
 		}else{// REQ visit n time
 			if(incomeEdgeConfirm.size()==0)//all scope computation before this process done
-				receiveScopeACK(null);
+				receiveScopeACK(edge);
 		}
 	}
 	
@@ -249,21 +253,25 @@ public class ProcessMonitor {
 	 * @param edge
 	 */
 	public void receiveScopeACK(StaticEdge edge){
-//		System.out.println(processName+" recieve SCOPE_ACK");
-//		System.out.println(toString());
+		System.out.println(processName+" recieve SCOPE_ACK "+edge);
 		if(edge!=null)
-			incomeEdgeConfirm.remove(edge);
+			synchronized(incomeEdgeConfirm){incomeEdgeConfirm.remove(edge);}
+//		System.out.println(toString());
 		if(incomeEdgeConfirm.size()==0){//all scope computation before this process done
 			if(scope.size()==0){//last process,send itself setup request
 				receiveSetupREQ(null);
 			}else{
-				Set<StaticEdge>remove=new HashSet<StaticEdge>();
+//				Set<StaticEdge>remove=new HashSet<StaticEdge>();
+				synchronized(outgoEdgeConfirm){
 				for(StaticEdge e:outgoEdgeConfirm){
-					remove.add(e);
-				}
-				outgoEdgeConfirm.removeAll(remove);
-				for(StaticEdge e:remove)
+//					remove.add(e);
 					sendCMD(processName,e.getTarget(),ComConstants.SCOPE_ACK,e.clone());
+				}
+				outgoEdgeConfirm.clear();
+				}
+//				outgoEdgeConfirm.removeAll(remove);
+//				for(StaticEdge e:remove)
+//					sendCMD(processName,e.getTarget(),ComConstants.SCOPE_ACK,e.clone());
 			}
 		}
 	}
@@ -273,30 +281,33 @@ public class ProcessMonitor {
 	 * @param edge
 	 */
 	public void receiveSetupREQ(StaticEdge edge){
-//		System.out.println(processName+" recieve Setup_REQ");
+		System.out.println(processName+" recieve Setup_REQ "+edge);
 //		System.out.println(toString());
 		//suspend
 		if(!isSuspend())
 			setSuspend(true);
 		if(edge!=null){
-			outgoEdgeConfirm.add(edge);
+			synchronized(outgoEdgeConfirm){outgoEdgeConfirm.add(edge);}
 		}
 		if(outgoEdgeConfirm.size()==scope.size()){//receive all setup request from scope
-			setupState=MonitorConstants.STATE_ONDEMAND;
-			System.out.println(processName+" set state: "+setupState);
-			for(StaticEdge e:incomeEdge){
-				incomeEdgeConfirm.add(e);
-//				sendCMD(processName,e.getSource(),ComConstants.SETUP_REQUEST,e.clone());
-			}
-			//TODO clone set for solving asynchronous and concurrent error
-			Set<StaticEdge> sendSet=new HashSet<StaticEdge>(incomeEdge);
-			for(StaticEdge e:sendSet)
-				sendCMD(e.getTarget(),e.getSource(),ComConstants.SETUP_REQUEST,e.clone());
-			//do setup
-			setup();
-			if(incomeEdgeConfirm.size()==0)//two way to invoke last process setup ACK. 1.finish setup;2.receive all ACK.
-				//We don't know which event comes first
-				receiveSetupACK(null);
+			if(setupState.equals(MonitorConstants.STATE_NORMAL)){
+				synchronized(setupState){
+					if(setupState.equals(MonitorConstants.STATE_NORMAL)){
+						setupState=MonitorConstants.STATE_ONDEMAND;
+					System.out.println(processName+" set state: "+setupState);
+					synchronized(incomeEdgeConfirm){
+						for(StaticEdge e:incomeEdge){
+							incomeEdgeConfirm.add(e);
+							sendCMD(processName,e.getSource(),ComConstants.SETUP_REQUEST,e.clone());
+						}
+					}
+					//do setup
+					setup();
+					if(incomeEdgeConfirm.size()==0)//two way to invoke last process setup ACK. 1.finish setup;2.receive all ACK.
+						//We don't know which event comes first
+						receiveSetupACK(null);
+				}}
+				}
 		}
 	}
 	
@@ -306,20 +317,23 @@ public class ProcessMonitor {
 	 */
 	@SuppressWarnings("static-access")
 	public void receiveSetupACK(StaticEdge edge){
-//		System.out.println(processName+" recieve Setup_ACK");
+		System.out.println(processName+" recieve Setup_ACK "+edge);
 //		System.out.println(toString());
 		if(edge!=null)
-			incomeEdgeConfirm.remove(edge);
+			synchronized(incomeEdgeConfirm){incomeEdgeConfirm.remove(edge);}
 		if(incomeEdgeConfirm.size()==0&&setupState.equals(MonitorConstants.STATE_SETUP)){//all process setup before done setup and itself setup done
 			setupState=MonitorConstants.STATE_VALID;
 			System.out.println(processName+" set state: "+setupState);
-			Set<StaticEdge> remove=new HashSet<StaticEdge>();
+//			Set<StaticEdge> remove=new HashSet<StaticEdge>();
+			synchronized(outgoEdgeConfirm){
 			for(StaticEdge e:outgoEdgeConfirm){
-				remove.add(e);
+//				remove.add(e);
 				sendCMD(processName,e.getTarget(),ComConstants.SETUP_ACK,e.clone());
 			}
-			outgoEdgeConfirm.removeAll(remove);
-			resume();
+			outgoEdgeConfirm.clear();
+			}
+//			outgoEdgeConfirm.removeAll(remove);
+//			resume();
 			if(scope.size()==0&&setupState.equals(MonitorConstants.STATE_VALID)){//last process
 				//do freeness to update
 				doUpdate();
@@ -329,13 +343,19 @@ public class ProcessMonitor {
 	
 	public synchronized void setup(){
 		System.out.println(processName+" starts setup...");
+		System.out.println(toString());
+		synchronized(instanceMonitors){
+		synchronized(notifyOutgoFutureDependencies){
+		synchronized(notifyOutgoPastDependencies){
+		synchronized(subNotifyOutgoFutureDependencies){
+		synchronized(subNotifyOutgoPastDependencies){
 		for(InstanceMonitor im:instanceMonitors.values()){
 			DynamicDependency lfe=new DynamicDependency(processName,processName,im.getRootMonitorName(),im.getRootInstanceId(),MonitorConstants.DYNAMICDEPENDENCY_FUTURE);
 			DynamicDependency lpe=new DynamicDependency(processName,processName,im.getRootMonitorName(),im.getRootInstanceId(),MonitorConstants.DYNAMICDEPENDENCY_PAST);
-			OES.add(lpe);OES.add(lfe);
-			IES.add(lpe);IES.add(lfe);
+			synchronized(OES){OES.add(lpe);OES.add(lfe);}
+			synchronized(IES){IES.add(lpe);IES.add(lfe);}
 			if(isRoot){
-				for(StaticEdge edge:outgoEdge){
+				for(StaticEdge edge:scope){
 					String currentNodeName=im.getCurrentNode();
 					String partnerLinkType=edgeMapPartnerLinkType.get(edge);
 					//f(T)
@@ -345,7 +365,7 @@ public class ProcessMonitor {
 						if(!OES.contains(dynamicDependency)){
 							OES.add(dynamicDependency);
 							notifyOutgoFutureDependencies.add(dynamicDependency);
-//							sendCMD(processName, edge.getTarget(), ComConstants.FUTURE_NOTIFY, dynamicDependency.clone());
+							sendCMD(processName, edge.getTarget(), ComConstants.FUTURE_NOTIFY, dynamicDependency.clone());
 						}
 					}
 					//p(T)
@@ -355,7 +375,7 @@ public class ProcessMonitor {
 						if(!OES.contains(dynamicDependency)){
 							OES.add(dynamicDependency);
 							notifyOutgoPastDependencies.add(dynamicDependency);
-//							sendCMD(processName,edge.getTarget(),ComConstants.PAST_NOTIFY,dynamicDependency.clone());
+							sendCMD(processName,edge.getTarget(),ComConstants.PAST_NOTIFY,dynamicDependency.clone());
 						}
 					}
 					//s(T)
@@ -364,76 +384,84 @@ public class ProcessMonitor {
 							DynamicDependency dynamicDependency=new DynamicDependency(processName,edge.getTarget(),processName,im.getInstanceId(),
 									null);
 							subNotifyOutgoFutureDependencies.add(dynamicDependency);
-//							sendCMD(processName, edge.getTarget(), ComConstants.SUB_FUTURE_NOTIFY,dynamicDependency);
+							sendCMD(processName, edge.getTarget(), ComConstants.SUB_FUTURE_NOTIFY,dynamicDependency);
 						}
 						if(!im.isPast(currentNodeName, partnerLinkType,internalAnalyser)){
 							DynamicDependency dynamicDependency=new DynamicDependency(processName,edge.getTarget(),processName,im.getInstanceId(),
 									null);
 							subNotifyOutgoPastDependencies.add(dynamicDependency);
-//							sendCMD(processName, edge.getTarget(), ComConstants.SUB_PAST_NOTIFY,dynamicDependency);
-						}
+							sendCMD(processName, edge.getTarget(), ComConstants.SUB_PAST_NOTIFY,dynamicDependency);
 					}
-				}
+				}}
 				//TODO Clone set is not a good idea for solving asynchronous error, should call @link{sendCollectionCMD} function
-				Set<DynamicDependency> set;
-				set=new HashSet<DynamicDependency>(notifyOutgoFutureDependencies);
-				for(DynamicDependency dd:set){
-					sendCMD(dd.getSourceMonitorName(), dd.getTargetMonitorName(), ComConstants.FUTURE_NOTIFY, dd.clone());
-				}
-				set=new HashSet<DynamicDependency>(notifyOutgoPastDependencies);
-				for(DynamicDependency dd:set)
-					sendCMD(dd.getSourceMonitorName(), dd.getTargetMonitorName(), ComConstants.PAST_NOTIFY, dd.clone());
-				set=new HashSet<DynamicDependency>(subNotifyOutgoFutureDependencies);
-				for(DynamicDependency dd:set)
-					sendCMD(dd.getSourceMonitorName(), dd.getTargetMonitorName(), ComConstants.SUB_FUTURE_NOTIFY, dd.clone());
-				set=new HashSet<DynamicDependency>(subNotifyOutgoPastDependencies);
-				for(DynamicDependency dd:set)
-					sendCMD(dd.getSourceMonitorName(), dd.getTargetMonitorName(), ComConstants.SUB_PAST_NOTIFY, dd.clone());
+//				Set<DynamicDependency> set;
+//				set=new HashSet<DynamicDependency>(notifyOutgoFutureDependencies);
+//				for(DynamicDependency dd:set){
+//					sendCMD(dd.getSourceMonitorName(), dd.getTargetMonitorName(), ComConstants.FUTURE_NOTIFY, dd.clone());
+//				}
+//				set=new HashSet<DynamicDependency>(notifyOutgoPastDependencies);
+//				for(DynamicDependency dd:set)
+//					sendCMD(dd.getSourceMonitorName(), dd.getTargetMonitorName(), ComConstants.PAST_NOTIFY, dd.clone());
+//				set=new HashSet<DynamicDependency>(subNotifyOutgoFutureDependencies);
+//				for(DynamicDependency dd:set)
+//					sendCMD(dd.getSourceMonitorName(), dd.getTargetMonitorName(), ComConstants.SUB_FUTURE_NOTIFY, dd.clone());
+//				set=new HashSet<DynamicDependency>(subNotifyOutgoPastDependencies);
+//				for(DynamicDependency dd:set)
+//					sendCMD(dd.getSourceMonitorName(), dd.getTargetMonitorName(), ComConstants.SUB_PAST_NOTIFY, dd.clone());
 			}
-		}
+		}}}}}}
 		setupOver();
 	}
 	
 	public void receiveFutureNotify(DynamicDependency dd){
+		System.out.println(processName+" receive future notify..."+dd);
+		System.out.println(toString());
 		if(dd!=null){
 			if(!notifyIncomeFutureDependencies.contains(dd)){
-				IES.add(dd);
-				notifyIncomeFutureDependencies.add(dd);
-				for(StaticEdge edge:outgoEdge){
+				synchronized(IES){IES.add(dd);}
+				synchronized(notifyIncomeFutureDependencies){notifyIncomeFutureDependencies.add(dd);}
+				synchronized(notifyOutgoFutureDependencies){
+				for(StaticEdge edge:scope){
 					DynamicDependency dynamicDependency=new DynamicDependency(processName,edge.getTarget(),dd.getRootMonitorName(),dd.getRootInstanceId(),
 							dd.getType());
+					synchronized(OES){
 					OES.add(dynamicDependency);
+					}
 					if(!notifyOutgoFutureDependencies.contains(dynamicDependency)){
 						notifyOutgoFutureDependencies.add(dynamicDependency);
-//						sendCMD(processName,edge.getTarget(),ComConstants.FUTURE_NOTIFY,dynamicDependency.clone());
+						sendCMD(processName,edge.getTarget(),ComConstants.FUTURE_NOTIFY,dynamicDependency.clone());
 					}
-				}
+				}}
 				//TODO clone set
-				Set<DynamicDependency>sendSet=new HashSet<DynamicDependency>(notifyOutgoFutureDependencies);
-				for(DynamicDependency d:sendSet)
-					sendCMD(processName,d.getTargetMonitorName(),ComConstants.FUTURE_NOTIFY,d.clone());
-				receiveFutureACK(null);
+//				Set<DynamicDependency>sendSet=new HashSet<DynamicDependency>(notifyOutgoFutureDependencies);
+//				for(DynamicDependency d:sendSet)
+//					sendCMD(processName,d.getTargetMonitorName(),ComConstants.FUTURE_NOTIFY,d.clone());
+				receiveFutureACK(dd);
 			}
 		}
 	}
 	public void receiveFutureACK(DynamicDependency dd){
+		System.out.println(processName+" receive future ack..."+dd);
+		System.out.println(toString());
 		if(dd!=null){
-			if(notifyOutgoFutureDependencies.contains(dd))
-				notifyOutgoFutureDependencies.remove(dd);
+			if(dd.getType()!=null)
+				synchronized(notifyOutgoFutureDependencies){notifyOutgoFutureDependencies.remove(dd);}
 			else if(subNotifyOutgoFutureDependencies.contains(dd)){//request sent by sub future
 //				subNotifyOutgoFutureDependencies.remove(dd);
 				receiveSubFutureACK(dd);
 			}
 		}
 		boolean getAllACK=true;//ACK for root instance dd.rootInstance
+		synchronized(notifyOutgoFutureDependencies){
 		for(DynamicDependency outgoD:notifyOutgoFutureDependencies){
-			if(dd==null||dd.equalRootTX(outgoD)){
+			if(dd.equalRootTX(outgoD)){
 				getAllACK=false;
 				break;
 			}
-		}
+		}}
 		if(getAllACK){
 			Set<DynamicDependency> remove=new HashSet<DynamicDependency>();
+			synchronized(notifyIncomeFutureDependencies){
 			for(DynamicDependency incomeD:notifyIncomeFutureDependencies){
 				if(dd==null){
 					remove.add(incomeD);
@@ -445,48 +473,56 @@ public class ProcessMonitor {
 				}
 			}
 			notifyIncomeFutureDependencies.removeAll(remove);
+			}
 		}
 		if(isRoot)//if want to merge future notify and future create notify, add setupState here
 			setupOver();
 	}
 	public void receivePastNotify(DynamicDependency dd){
+		System.out.println(processName+" receive past notify..."+dd);
+		System.out.println(toString());
 		if(dd!=null){
 			if(!notifyIncomePastDependencies.contains(dd)){
-				IES.add(dd);
-				notifyIncomePastDependencies.add(dd);
-				for(StaticEdge edge:outgoEdge){
+				synchronized(IES){IES.add(dd);}
+				synchronized(notifyIncomePastDependencies){notifyIncomePastDependencies.add(dd);}
+				synchronized(notifyOutgoPastDependencies){
+				for(StaticEdge edge:scope){
 					DynamicDependency dynamicDependency=new DynamicDependency(processName,edge.getTarget(),dd.getRootMonitorName(),dd.getRootInstanceId(),
 							dd.getType());
-					OES.add(dynamicDependency);
+					synchronized(OES){OES.add(dynamicDependency);}
 					if(!notifyOutgoPastDependencies.contains(dynamicDependency)){
 						notifyOutgoPastDependencies.add(dynamicDependency);
-//						sendCMD(processName,edge.getTarget(),ComConstants.PAST_NOTIFY,dynamicDependency.clone());
+						sendCMD(processName,edge.getTarget(),ComConstants.PAST_NOTIFY,dynamicDependency.clone());
 					}
-				}
+				}}
 				//TODO clone set
-				Set<DynamicDependency>sendSet=new HashSet<DynamicDependency>(notifyOutgoPastDependencies);
-				for(DynamicDependency dynamicDependency:sendSet)
-					sendCMD(processName,dynamicDependency.getTargetMonitorName(),ComConstants.PAST_NOTIFY,dynamicDependency.clone());
-				receivePastACK(null);
+//				Set<DynamicDependency>sendSet=new HashSet<DynamicDependency>(notifyOutgoPastDependencies);
+//				for(DynamicDependency dynamicDependency:sendSet)
+//					sendCMD(processName,dynamicDependency.getTargetMonitorName(),ComConstants.PAST_NOTIFY,dynamicDependency.clone());
+				receivePastACK(dd);
 			}
 		}
 	}
 	public void receivePastACK(DynamicDependency dd){
+		System.out.println(processName+" receive past ack..."+dd);
+		System.out.println(toString());
 		if(dd!=null){
-			if(notifyOutgoPastDependencies.contains(dd))
-				notifyOutgoPastDependencies.remove(dd);
+			if(dd.getType()!=null)
+				synchronized(notifyOutgoPastDependencies){notifyOutgoPastDependencies.remove(dd);}
 			else if(subNotifyOutgoPastDependencies.contains(dd))
 				receiveSubPastACK(dd);
 		}
 		boolean getAllACK=true;//ACK for root instance dd.rootInstance
+		synchronized(notifyOutgoPastDependencies){
 		for(DynamicDependency outgoD:notifyOutgoPastDependencies){
-			if(dd==null||dd.equalRootTX(outgoD)){
+			if(dd.equalRootTX(outgoD)){
 				getAllACK=false;
 				break;
 			}
-		}
+		}}
 		if(getAllACK){
 			Set<DynamicDependency> remove=new HashSet<DynamicDependency>();
+			synchronized(notifyIncomePastDependencies){
 			for(DynamicDependency incomeD:notifyIncomePastDependencies){
 				if(dd==null){
 					remove.add(incomeD);
@@ -498,27 +534,31 @@ public class ProcessMonitor {
 				}
 			}
 			notifyIncomePastDependencies.removeAll(remove);
+			}
 		}
 		if(isRoot)
 			setupOver();
 	}
 	
 	public void receiveSubFutureNotify(DynamicDependency dd){
+		System.out.println(processName+" receive sub future notify..."+dd);
+		System.out.println(toString());
 		if(dd!=null){
 			if(!subNotifyIncomeFutureDependencies.contains(dd)){
-				subNotifyIncomeFutureDependencies.add(dd);
+				synchronized(subNotifyIncomeFutureDependencies){subNotifyIncomeFutureDependencies.add(dd);}
 				InstanceMonitor im=getSubInstance(dd.getRootMonitorName(),dd.getRootInstanceId());
 				if(im!=null){
-					for(StaticEdge outEdge:outgoEdge){
+					synchronized(subNotifyOutgoFutureDependencies){
+					for(StaticEdge outEdge:scope){
 						String currentNodeName=im.getCurrentNode();
 						String partnerLinkType=edgeMapPartnerLinkType.get(outEdge);
 						if(internalAnalyser.isFuture(currentNodeName, partnerLinkType)){
 							DynamicDependency dynamicDependency=new DynamicDependency(processName,outEdge.getTarget(),dd.getRootMonitorName(),dd.getRootInstanceId(),
 									MonitorConstants.DYNAMICDEPENDENCY_FUTURE);
 							if(!OES.contains(dynamicDependency)){
-								OES.add(dynamicDependency);
+								synchronized(OES){OES.add(dynamicDependency);}
 								subNotifyOutgoFutureDependencies.add(dynamicDependency);//add to sub notify outgo future list
-		//						sendCMD(processName,outEdge.getTarget(),ComConstants.FUTURE_NOTIFY,dynamicDependency.clone());
+								sendCMD(processName,outEdge.getTarget(),ComConstants.FUTURE_NOTIFY,dynamicDependency.clone());
 							}
 						}
 						if(internalAnalyser.isS(currentNodeName, partnerLinkType)){
@@ -526,36 +566,40 @@ public class ProcessMonitor {
 								DynamicDependency dynamicDependency=new DynamicDependency(processName,outEdge.getTarget(),dd.getRootMonitorName(),dd.getRootInstanceId(),
 										null);
 								subNotifyOutgoFutureDependencies.add(dynamicDependency);
-		//						sendCMD(processName, outEdge.getTarget(), ComConstants.SUB_FUTURE_NOTIFY,dynamicDependency.clone());
+								sendCMD(processName, outEdge.getTarget(), ComConstants.SUB_FUTURE_NOTIFY,dynamicDependency.clone());
 							}
 						}
-					}
+					}}
 					//TODO colone set
-					Set<DynamicDependency>sendSet=new HashSet<DynamicDependency>(subNotifyOutgoFutureDependencies);
-					for(DynamicDependency dynamicDependency:sendSet)
-						if(dynamicDependency.getType()==null)
-							sendCMD(processName, dynamicDependency.getTargetMonitorName(), ComConstants.SUB_FUTURE_NOTIFY,dynamicDependency.clone());
-						else if(dynamicDependency.getType().equals(MonitorConstants.DYNAMICDEPENDENCY_FUTURE))
-							sendCMD(processName,dynamicDependency.getTargetMonitorName(),ComConstants.FUTURE_NOTIFY,dynamicDependency.clone());
+//					Set<DynamicDependency>sendSet=new HashSet<DynamicDependency>(subNotifyOutgoFutureDependencies);
+//					for(DynamicDependency dynamicDependency:sendSet)
+//						if(dynamicDependency.getType()==null)
+//							sendCMD(processName, dynamicDependency.getTargetMonitorName(), ComConstants.SUB_FUTURE_NOTIFY,dynamicDependency.clone());
+//						else if(dynamicDependency.getType().equals(MonitorConstants.DYNAMICDEPENDENCY_FUTURE))
+//							sendCMD(processName,dynamicDependency.getTargetMonitorName(),ComConstants.FUTURE_NOTIFY,dynamicDependency.clone());
 				}
-				receiveSubFutureACK(null);
+				receiveSubFutureACK(dd);
 			}
 		}
 	}
 	public void receiveSubFutureACK(DynamicDependency dd){
+		System.out.println(processName+" receive sub future ack..."+dd);
+		System.out.println(toString());
 		if(dd!=null){
 			if(subNotifyOutgoFutureDependencies.contains(dd))
-				subNotifyOutgoFutureDependencies.remove(dd);
+				synchronized(subNotifyOutgoFutureDependencies){subNotifyOutgoFutureDependencies.remove(dd);}
 		}
 		boolean getAllACK=true;//ACK for root instance dd.rootInstance
+		synchronized(subNotifyOutgoFutureDependencies){
 		for(DynamicDependency outgoD:subNotifyOutgoFutureDependencies){
-			if(dd==null||dd.equalRootTX(outgoD)){
+			if(dd.equalRootTX(outgoD)){
 				getAllACK=false;
 				break;
 			}
-		}
+		}}
 		if(getAllACK){
 			Set<DynamicDependency> remove=new HashSet<DynamicDependency>();
+			synchronized(subNotifyIncomeFutureDependencies){
 			for(DynamicDependency incomeD:subNotifyIncomeFutureDependencies){
 				if(dd==null){
 					remove.add(incomeD);
@@ -567,18 +611,22 @@ public class ProcessMonitor {
 				}
 			}
 			subNotifyIncomeFutureDependencies.removeAll(remove);
+			}
 		}
 		if(isRoot)
 			setupOver();
 	}
 	
 	public void receiveSubPastNotify(DynamicDependency dd){
+		System.out.println(processName+" receive sub past notify..."+dd);
+		System.out.println(toString());
 		if(dd!=null){
 			if(!subNotifyIncomePastDependencies.contains(dd)){
-				subNotifyIncomePastDependencies.add(dd);
+				synchronized(subNotifyIncomePastDependencies){subNotifyIncomePastDependencies.add(dd);}
 				InstanceMonitor im=getSubInstance(dd.getRootMonitorName(),dd.getRootInstanceId());
 				if(im!=null){
-					for(StaticEdge outEdge:outgoEdge){
+					synchronized(subNotifyOutgoPastDependencies){
+					for(StaticEdge outEdge:scope){
 						String currentNodeName=im.getCurrentNode();
 						String partnerLinkType=edgeMapPartnerLinkType.get(outEdge);
 						if(im.isPast(currentNodeName, partnerLinkType,internalAnalyser)){
@@ -587,7 +635,7 @@ public class ProcessMonitor {
 							if(!OES.contains(dynamicDependency)){
 								OES.add(dynamicDependency);
 								subNotifyOutgoPastDependencies.add(dynamicDependency);//add to sub notify outgo future list
-		//						sendCMD(processName,outEdge.getTarget(),ComConstants.FUTURE_NOTIFY,dynamicDependency.clone());
+								sendCMD(processName,outEdge.getTarget(),ComConstants.PAST_NOTIFY,dynamicDependency.clone());
 							}
 						}
 						if(internalAnalyser.isS(currentNodeName, partnerLinkType)){
@@ -595,36 +643,40 @@ public class ProcessMonitor {
 								DynamicDependency dynamicDependency=new DynamicDependency(processName,outEdge.getTarget(),dd.getRootMonitorName(),dd.getRootInstanceId(),
 										null);
 								subNotifyOutgoPastDependencies.add(dynamicDependency);
-		//						sendCMD(processName, outEdge.getTarget(), ComConstants.SUB_FUTURE_NOTIFY,dynamicDependency.clone());
+								sendCMD(processName, outEdge.getTarget(), ComConstants.SUB_PAST_NOTIFY,dynamicDependency.clone());
 							}
 						}
 					}
 					//TODO clone set
-					Set<DynamicDependency>sendSet=new HashSet<DynamicDependency>(subNotifyOutgoPastDependencies);
-					for(DynamicDependency dynamicDependency:sendSet)
-						if(dynamicDependency.getType()==null)
-							sendCMD(processName, dynamicDependency.getTargetMonitorName(), ComConstants.SUB_PAST_NOTIFY,dynamicDependency.clone());
-						else if(dynamicDependency.getType().equals(MonitorConstants.DYNAMICDEPENDENCY_PAST))
-							sendCMD(processName,dynamicDependency.getTargetMonitorName(),ComConstants.PAST_NOTIFY,dynamicDependency.clone());
-				}
-				receiveSubPastACK(null);
+//					Set<DynamicDependency>sendSet=new HashSet<DynamicDependency>(subNotifyOutgoPastDependencies);
+//					for(DynamicDependency dynamicDependency:sendSet)
+//						if(dynamicDependency.getType()==null)
+//							sendCMD(processName, dynamicDependency.getTargetMonitorName(), ComConstants.SUB_PAST_NOTIFY,dynamicDependency.clone());
+//						else if(dynamicDependency.getType().equals(MonitorConstants.DYNAMICDEPENDENCY_PAST))
+//							sendCMD(processName,dynamicDependency.getTargetMonitorName(),ComConstants.PAST_NOTIFY,dynamicDependency.clone());
+				}}
+				receiveSubPastACK(dd);
 			}
 		}
 	}
 	public void receiveSubPastACK(DynamicDependency dd){
+		System.out.println(processName+" receive sub past ack..."+dd);
+		System.out.println(toString());
 		if(dd!=null){
 			if(subNotifyOutgoPastDependencies.contains(dd))
-				subNotifyOutgoPastDependencies.remove(dd);
+				synchronized(subNotifyOutgoPastDependencies){subNotifyOutgoPastDependencies.remove(dd);}
 		}
 		boolean getAllACK=true;//ACK for root instance dd.rootInstance
+		synchronized(subNotifyOutgoPastDependencies){
 		for(DynamicDependency outgoD:subNotifyOutgoPastDependencies){
-			if(dd==null||dd.equalRootTX(outgoD)){
+			if(dd.equalRootTX(outgoD)){
 				getAllACK=false;
 				break;
 			}
-		}
+		}}
 		if(getAllACK){
 			Set<DynamicDependency> remove=new HashSet<DynamicDependency>();
+			synchronized(subNotifyIncomePastDependencies){
 			for(DynamicDependency incomeD:subNotifyIncomePastDependencies){
 				if(dd==null){
 					remove.add(incomeD);
@@ -636,6 +688,7 @@ public class ProcessMonitor {
 				}
 			}
 			subNotifyIncomePastDependencies.removeAll(remove);
+			}
 		}
 		if(isRoot)
 			setupOver();
@@ -648,10 +701,11 @@ public class ProcessMonitor {
 	 */
 	private synchronized InstanceMonitor getSubInstance(String rootMonitorName,long id){
 		if(instanceMonitors!=null)
+			synchronized(instanceMonitors){
 			for(InstanceMonitor temp:instanceMonitors.values()){
 				if(temp.getRootMonitorName().equals(rootMonitorName)&&temp.getRootInstanceId()==id)
 					return temp;
-			}
+			}}
 		return null;
 	}
 //	/**
@@ -695,7 +749,7 @@ public class ProcessMonitor {
 				synchronized(IES){
 				IES.add(lfe);IES.add(lpe);
 				}
-				for(StaticEdge edge:outgoEdge){
+				for(StaticEdge edge:scope){
 					DynamicDependency dd=new DynamicDependency(processName, edge.getTarget(), processName, im.getInstanceId(),
 							MonitorConstants.DYNAMICDEPENDENCY_FUTURE);
 					synchronized(OES){OES.add(dd);}
@@ -727,7 +781,7 @@ public class ProcessMonitor {
 			System.out.println("Child of "+dd.getRootMonitorName()+":"+dd.getRootInstanceId()+" in receiveFutureCreate");
 			if(dd!=null&&(!IES.contains(dd))){
 				synchronized(IES){IES.add(dd);}
-				for(StaticEdge edge:outgoEdge){
+				for(StaticEdge edge:scope){
 					DynamicDependency d=new DynamicDependency(processName, edge.getTarget(), dd.getRootMonitorName(), dd.getRootInstanceId(),
 							MonitorConstants.DYNAMICDEPENDENCY_FUTURE);
 					if(!OES.contains(d)){
@@ -767,6 +821,9 @@ public class ProcessMonitor {
 								remove.add(outgo);
 								sendCMD(processName,dd.getTargetMonitorName(),ComConstants.FUTURE_REMOVE_NOTIFY,outgo.clone());
 							}
+						}else{//im==null means current instance end
+							remove.add(outgo);
+							sendCMD(processName,dd.getTargetMonitorName(),ComConstants.FUTURE_REMOVE_NOTIFY,outgo.clone());
 						}
 					}
 				}
@@ -790,7 +847,7 @@ public class ProcessMonitor {
 		}
 	}
 	public void rootTXEnd(InstanceMonitor im){
-		System.out.println(instanceMonitors.toString());
+//		System.out.println(instanceMonitors.toString());
 	}
 	public void subTXEnd(InstanceMonitor im){
 		if(checkInfoUpdateNeeded(im.getRootMonitorName(), im.getRootInstanceId())){
@@ -982,7 +1039,8 @@ public class ProcessMonitor {
 	@Override
 	public String toString(){
 		StringBuffer s=new StringBuffer();
-		s.append(processName+"---------------------------------------------------------------------\t\n");
+		s.append("---------------------------------------------------------------------\t\n");
+		s.append(processName+"\t\n");
 		s.append("IncomeEdge: "+incomeEdge.toString()+"\t\n");
 		s.append("OutgoEdge: "+outgoEdge.toString()+"\t\n");
 		s.append("Scope: "+scope.toString()+"\t\n");

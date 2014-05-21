@@ -123,8 +123,8 @@ public class InstanceMonitor {
 		currentNode=nodeName;
 		pastNodes.add(lastNode);
 //		System.out.println(instanceId+" Updated Node======last: "+lastNode+" $$ current: "+currentNode+"==========");
-		if(pm.getSetupState().equals(MonitorConstants.STATE_VALID))
-			pm.updateCurrentNode(this);
+//		if(pm.getSetupState().equals(MonitorConstants.STATE_VALID))
+//			pm.updateCurrentNode(this);
 	}
 	public boolean isPast(String currentNode,String partnerLinkType,Analyser internalAnalyser){
 		for(String node:pastNodes){
@@ -136,7 +136,8 @@ public class InstanceMonitor {
 	@Override
 	public String toString(){
 		StringBuffer s=new StringBuffer();
-		s.append("Instance: "+pm.getProcessName()+"#"+instanceId+"-----------------------------------\t\n");
+		s.append("------------------------------------------------------------\t\n");
+		s.append("Instance: "+pm.getProcessName()+"#"+instanceId+"\t\n");
 		s.append("RootMonitorName: "+rootMonitorName+"\t\n");
 		s.append("RootId: "+rootInstanceId+"\t\n");
 		s.append("ParentMonitorName: "+parentMonitorName+"\t\n");
