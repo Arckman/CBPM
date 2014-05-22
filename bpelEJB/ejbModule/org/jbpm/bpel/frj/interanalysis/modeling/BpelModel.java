@@ -24,7 +24,8 @@ public class BpelModel {
 	private Map<String,Activity> nodes;
 	private String targetNS;
 	private final long id=System.currentTimeMillis();
-	private Map<String,String> incomePartnerLinkType=new HashMap<String,String>();//nodeName->partnerLinkType
+	//nodeName->partnerLinkType,unreasonable
+	private Map<String,String> incomePartnerLinkType=new HashMap<String,String>();
 	private Map<String,String> outgoPartnerLinkType=new HashMap<String,String>();
 
 	public String getTargetNS() {

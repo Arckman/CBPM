@@ -100,31 +100,48 @@ public class InstanceMonitor {
 	}
 	
 	public void newTXInit(){
-		if(!pm.getSetupState().equals(MonitorConstants.STATE_NORMAL)){
-			if(pm.isRoot())
-				pm.rootTXInit(this);
-			else
-				pm.subTXInit(this);
-		}
+		if(pm.getVcManager().getMethod().equals(MonitorConstants.METHOD_VC))
+			if(!pm.getSetupState().equals(MonitorConstants.STATE_NORMAL)){
+				if(pm.isRoot())
+					pm.rootTXInit(this);
+				else
+					pm.subTXInit(this);
+			}
 	}
 	public void TXEnd(){
 //		pm.removeInstanceMonitor(instanceId);
 //		System.out.println("recievie TXEND");
 //		System.out.println(toString());
-		if(!pm.getSetupState().equals(MonitorConstants.STATE_NORMAL)){
-			if(pm.isRoot())
-				pm.rootTXEnd(this);
-			else
-				pm.subTXEnd(this);
+		//TODO instance on process which is not root could be root tx
+		if(pm.getVcManager().getMethod().equals(MonitorConstants.METHOD_QUIESCENCE)||
+				(pm.getVcManager().getMethod().equals(MonitorConstants.METHOD_VC)//)){
+						&&!pm.getSetupState().equals(MonitorConstants.STATE_NORMAL))){
+			if(pm.getVcManager().getMethod().equals(MonitorConstants.METHOD_QUIESCENCE)){
+				if(pm.isRoot())
+					pm.rootTXEnd(this);
+			}else if(pm.getVcManager().getMethod().equals(MonitorConstants.METHOD_VC)){
+				if(pm.getSetupState().equals(MonitorConstants.STATE_VALID)){
+					if(pm.isRoot())
+						pm.rootTXEnd(this);
+					else
+						pm.subTXEnd(this);
+				}
+//				if(pm.isRoot())//for test
+//					pm.rootTXEnd(this);
+			}
 		}
 	}
 	public void updateCurrentNode(String nodeName){
-		lastNode=currentNode;
-		currentNode=nodeName;
-		pastNodes.add(lastNode);
+		if(pm.getVcManager().getMethod().equals(MonitorConstants.METHOD_VC)){
+			lastNode=currentNode;
+			currentNode=nodeName;
+			pastNodes.add(lastNode);
+			if(pm.getVcManager().useDD()){
 //		System.out.println(instanceId+" Updated Node======last: "+lastNode+" $$ current: "+currentNode+"==========");
-//		if(pm.getSetupState().equals(MonitorConstants.STATE_VALID))
-//			pm.updateCurrentNode(this);
+				if(pm.getSetupState().equals(MonitorConstants.STATE_VALID))
+					pm.updateCurrentNode(this);
+			}
+		}
 	}
 	public boolean isPast(String currentNode,String partnerLinkType,Analyser internalAnalyser){
 		for(String node:pastNodes){
@@ -136,14 +153,14 @@ public class InstanceMonitor {
 	@Override
 	public String toString(){
 		StringBuffer s=new StringBuffer();
-		s.append("------------------------------------------------------------\t\n");
-		s.append("Instance: "+pm.getProcessName()+"#"+instanceId+"\t\n");
+		s.append("------------------------------------------------------------------------------\t\n");
+		s.append("Instance: "+pm.getProcessName()+"#"+instanceId+"-"+rootInstanceId+"\t\n");
 		s.append("RootMonitorName: "+rootMonitorName+"\t\n");
 		s.append("RootId: "+rootInstanceId+"\t\n");
 		s.append("ParentMonitorName: "+parentMonitorName+"\t\n");
 		s.append("ParentId: "+parentInstanceId+"\t\n");
-		s.append("LastNode: "+lastNode+" $$ CurrentNode: "+currentNode+"\t\n");
-		s.append("PastNodes: "+pastNodes.toString()+"\t\n");
+//		s.append("LastNode: "+lastNode+" $$ CurrentNode: "+currentNode+"\t\n");
+//		s.append("PastNodes: "+pastNodes.toString()+"\t\n");
 		s.append("/////////////////////////////end///////////////////////////////////////////////////////");
 		return s.toString();
 	}

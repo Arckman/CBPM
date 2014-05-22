@@ -1,8 +1,10 @@
 package org.jbpm.bpel.frj.monitor;
 
-public class StaticEdge {
-	private ProcessMonitor sourceProcessMonitor=null;
-	private ProcessMonitor targetProcessMonitor=null;
+import java.io.Serializable;
+
+public class StaticEdge implements Serializable{
+//	private ProcessMonitor sourceProcessMonitor=null;
+//	private ProcessMonitor targetProcessMonitor=null;
 	private String source;
 	private String target;
 	
@@ -15,18 +17,18 @@ public class StaticEdge {
 		this.source=edge.source;
 		this.target=edge.target;
 	}
-	public ProcessMonitor getSourceProcessMonitor() {
-		return sourceProcessMonitor;
-	}
-	public void setSourceProcessMonitor(ProcessMonitor sourceProcessMonitor) {
-		this.sourceProcessMonitor = sourceProcessMonitor;
-	}
-	public ProcessMonitor getTargetProcessMonitor() {
-		return targetProcessMonitor;
-	}
-	public void setTargetProcessMonitor(ProcessMonitor targetProcessMonitor) {
-		this.targetProcessMonitor = targetProcessMonitor;
-	}
+//	public ProcessMonitor getSourceProcessMonitor() {
+//		return sourceProcessMonitor;
+//	}
+//	public void setSourceProcessMonitor(ProcessMonitor sourceProcessMonitor) {
+//		this.sourceProcessMonitor = sourceProcessMonitor;
+//	}
+//	public ProcessMonitor getTargetProcessMonitor() {
+//		return targetProcessMonitor;
+//	}
+//	public void setTargetProcessMonitor(ProcessMonitor targetProcessMonitor) {
+//		this.targetProcessMonitor = targetProcessMonitor;
+//	}
 	public String getSource() {
 		return source;
 	}

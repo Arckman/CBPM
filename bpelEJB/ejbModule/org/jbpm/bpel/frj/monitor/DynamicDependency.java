@@ -1,11 +1,13 @@
 package org.jbpm.bpel.frj.monitor;
 
+import java.io.Serializable;
+
 /**
  * information of parent can be removed, using root information instead anywhere
  * @author frj
  *
  */
-public class DynamicDependency {
+public class DynamicDependency implements Serializable{
 	private String sourceMonitorName;
 	private String targetMonitorName;
 	private String rootMonitorName=null;

@@ -15,4 +15,8 @@ public class MonitorConstants {
 	//dynamic dependency type
 	public final static String DYNAMICDEPENDENCY_FUTURE="future";
 	public final static String DYNAMICDEPENDENCY_PAST="past";
+	//method
+	public final static String METHOD_VC="VersionConsistency";
+	public final static String METHOD_VERSION="versioning";
+	public final static String METHOD_QUIESCENCE="quiescence";
 }

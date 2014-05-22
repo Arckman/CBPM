@@ -186,81 +186,83 @@ public class SoapCaller implements Caller {
     // call endpoint
     log.debug("calling endpoint at: " + address);
     //======================before call, try to configure address========================
-    VersionControlManager vm=JbpmConfiguration.getVersionControlManager();
-    ProcessMonitor target=vm.getPMFromURL(address);
-//    if(vm.getStrategy().equals(MonitorConstants.STRATEGY_CONCURRENT))
-//    	address=target.getNewURL();
-    if(target!=null&&target.isNeedUpdate()){//target need update
-    	//TODO if need suspend during target updating, add here! This thread should not wait on target object, because of distribution.
-    	if(target.getSetupState().equals(MonitorConstants.STATE_UPDATE)){
-    		System.out.println("target is updating");
-    		synchronized(target){
-    			if(target.getSetupState().equals(MonitorConstants.STATE_UPDATE)){//double check
-		    		try {
-						target.wait();
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-	    			//TODO if updated,resume should wait for finishing of updating for target
-	    			try {
-	    				Thread.currentThread().sleep(1000);
-	    			} catch (InterruptedException e) {
-	    				// TODO Auto-generated catch block
-	    				e.printStackTrace();
-	    			}
-    			}
-    		}
-    	}
-    	//consider strategy
-    	if(vm.getStrategy().equals(MonitorConstants.STRATEGY_WAIT)){
-    			
-    	}else if(vm.getStrategy().equals(MonitorConstants.STRATEGY_CONCURRENT)){
-    		address=target.getOldURL();//for test
-//    		if(target.checkHasPast(rootMonitorName, rootId)){//has past use
-//    			address=target.getOldURL();
-//    		}else{//using new version
-//    			if(target.getSetupState().equals(MonitorConstants.STATE_UPDATE)){
-//    	    		synchronized(target){
-//    		    		try {
-//    						target.wait();
-//    					} catch (InterruptedException e) {
-//    						// TODO Auto-generated catch block
-//    						e.printStackTrace();
-//    					}
-//    	    		}
-//    	    	}
-//    			try {
-//					Thread.currentThread().sleep(3000);
+//    VersionControlManager vm=JbpmConfiguration.getVersionControlManager();
+//    ProcessMonitor target=vm.getPMFromURL(address);
+////    if(vm.getStrategy().equals(MonitorConstants.STRATEGY_CONCURRENT))
+////    	address=target.getNewURL();
+//    if(target!=null&&target.isNeedUpdate()){//target need update
+//    	//TODO if need suspend during target updating, add here! This thread should not wait on target object, because of distribution.
+//    	if(target.getSetupState().equals(MonitorConstants.STATE_UPDATE)){
+//    		System.out.println("target is updating");
+//    		synchronized(target){
+//    			if(target.getSetupState().equals(MonitorConstants.STATE_UPDATE)){//double check
+//    				System.out.println("target is updating, block!");
+//		    		try {
+//						target.wait();
+//					} catch (InterruptedException e) {
+//						// TODO Auto-generated catch block
+//						e.printStackTrace();
+//					}
+//	    			//TODO if updated,resume should wait for finishing of updating for target
+//	    			try {
+//	    				Thread.currentThread().sleep(1000);
+//	    			} catch (InterruptedException e) {
+//	    				// TODO Auto-generated catch block
+//	    				e.printStackTrace();
+//	    			}
+//    			}
+//    		}
+//    	}
+//    	//consider strategy
+//    	if(vm.getStrategy().equals(MonitorConstants.STRATEGY_WAIT)){
+//    			
+//    	}else if(vm.getStrategy().equals(MonitorConstants.STRATEGY_CONCURRENT)){
+//    		address=target.getOldURL();//for test
+////    		if(target.checkHasPast(rootMonitorName, rootId)){//has past use
+////    			address=target.getOldURL();
+////    		}else{//using new version
+////    			if(target.getSetupState().equals(MonitorConstants.STATE_UPDATE)){
+////    	    		synchronized(target){
+////    		    		try {
+////    						target.wait();
+////    					} catch (InterruptedException e) {
+////    						// TODO Auto-generated catch block
+////    						e.printStackTrace();
+////    					}
+////    	    		}
+////    	    	}
+////    			try {
+////					Thread.currentThread().sleep(3000);
+////				} catch (InterruptedException e) {
+////					// TODO Auto-generated catch block
+////					e.printStackTrace();
+////				}
+////    			address=target.getNewURL();
+////    		}
+//    		System.out.println("Calling "+address.toString());
+//    	}
+//    	else if(vm.getStrategy().equals(MonitorConstants.STRATEGY_BLOCK)){
+//    		if(target.getSetupState().equals(MonitorConstants.STATE_VALID))
+//    		if(!target.checkHasPast(rootMonitorName, rootId)){//has no past use
+//    			synchronized(target){
+//    				System.out.println("Block stratrgy, never used target service, block now!");
+//	    			try {
+//						target.wait();
+//					} catch (InterruptedException e) {
+//						// TODO Auto-generated catch block
+//						e.printStackTrace();
+//					}
+//    			}
+//    			//TODO if updated,resume should wait for finishing of updating for target
+//				try {
+//					Thread.currentThread().sleep(1000);
 //				} catch (InterruptedException e) {
 //					// TODO Auto-generated catch block
 //					e.printStackTrace();
 //				}
-//    			address=target.getNewURL();
 //    		}
-    		System.out.println("Calling "+address.toString());
-    	}
-    	else if(vm.getStrategy().equals(MonitorConstants.STRATEGY_BLOCK)){
-    		if(target.getSetupState().equals(MonitorConstants.STATE_VALID))
-    		if(!target.checkHasPast(rootMonitorName, rootId)){//has no past use
-    			synchronized(target){
-	    			try {
-						target.wait();
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-    			}
-    			//TODO if updated,resume should wait for finishing of updating for target
-				try {
-					Thread.currentThread().sleep(1000);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-    		}
-    	}
-    }
+//    	}
+//    }
     return soapConnection.call(soapInput, address);
   }
 

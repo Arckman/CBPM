@@ -99,9 +99,11 @@ import org.jbpm.jpdl.par.ProcessArchive;
 			}
 			if(!vm.checkDynamicUpdatable())//for test
 				deployProcessDefinition(processDefinition, fileName);
-				String url="http://127.0.0.1:8080/";
-				url+=fileName.split("\\.")[0]+"/";url+=processDefinition.getName()+"Provider";
+				String url="http://127.0.0.1:8080";
+				String uri="/"+fileName.split("\\.")[0]+"/"+processDefinition.getName()+"Provider";
+				url+=uri;
 				vm.addURL(processDefinition, url);
+				vm.addURI(processDefinition, uri);
 /*     */ 
 /* 113 */     response.sendRedirect("processes.jsp");
 /*     */   }

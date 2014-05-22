@@ -1,13 +1,16 @@
 package org.jbpm.bpel.frj.communication;
 
-import org.jbpm.JbpmConfiguration;
-import org.jbpm.bpel.frj.monitor.ProcessMonitor;
+import java.io.Serializable;
 
-public class SimpleCommunicatorImpl implements Communicator{
-	private String source;
-	private String target;
-	private String command;
-	private Object msg;
+import org.jbpm.JbpmConfiguration;
+import org.jbpm.bpel.frj.VersionControlManager;
+import org.jbpm.bpel.frj.monitor.StaticEdge;
+
+public class SimpleCommunicatorImpl implements Communicator,Serializable{
+	protected String source;
+	protected String target;
+	protected String command;
+	protected Object msg;
 	public SimpleCommunicatorImpl(){}
 	public SimpleCommunicatorImpl(String source,String target){
 		this.source=source;
@@ -44,9 +47,9 @@ public class SimpleCommunicatorImpl implements Communicator{
 	public void setMsg(Object msg) {
 		this.msg = msg;
 	}
-	public void send() {
+	public void send(VersionControlManager vm) {
 		// TODO Auto-generated method stub
-		System.out.println("Sending msg: "+source+" to "+target+" using cmd ["+command+"]("+msg+")");
+//		System.out.println(source+" sending command["+command+"]("+msg+")] to "+target);
 		Thread t=new Thread(){
 			public void run(){
 				receive();
@@ -57,5 +60,14 @@ public class SimpleCommunicatorImpl implements Communicator{
 	public void receive() {
 		// TODO Auto-generated method stub
 		JbpmConfiguration.getVersionControlManager().receive(this);
+	}
+	@Override
+	public String toString(){
+		StringBuffer s=new StringBuffer();
+		s.append("This is a communicator---------------------------------------------\n\t");
+		s.append("From "+source+" to "+target+" sending cmd:"+command+"\t\n");
+		s.append("Carry message: "+msg+"\t\n");
+		s.append("///////////////////////////////////////////////////////////////////");
+		return s.toString();
 	}
 }

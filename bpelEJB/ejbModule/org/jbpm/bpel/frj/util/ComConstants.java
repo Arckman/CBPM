@@ -36,4 +36,8 @@ public class ComConstants {
 	public final static String PAST_CREATE_NOTIFY="past_create_notify";
 	//cleanup
 	public final static String CLEANUP_REQUEST="cleanup_request";
+	
+	//quiescence
+	public final static String PASSIVE_REQUEST="passive_request";
+	public final static String PASSIVE_ACK="passive_ack";
 }
