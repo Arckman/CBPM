@@ -97,6 +97,7 @@ import org.jbpm.jpdl.par.ProcessArchive;
 					}
 				}
 			}
+			if(!vm.checkDynamicUpdatable())//for test
 				deployProcessDefinition(processDefinition, fileName);
 				String url="http://127.0.0.1:8080/";
 				url+=fileName.split("\\.")[0]+"/";url+=processDefinition.getName()+"Provider";
